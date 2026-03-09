@@ -1,0 +1,76 @@
+pragma language_version 0.21;
+import CompactStandardLibrary;
+
+export enum PartyState {
+    NOT_READY,
+    READY
+}
+
+export ledger organizers: Set<ZswapCoinPublicKey>;// organizers are public
+export ledger hashedPartyGoers: Set<Bytes<32>>;// participants are hashed until they arrive
+export ledger checkedInParty: Set<Bytes<32>>;
+export ledger partyState: PartyState;
+export ledger partiers: Counter;
+export ledger maxListSize: Uint<8>;
+
+witness localStartParty() : PartyState;
+
+constructor(){
+    organizers.insert(ownPublicKey());
+    partyState = PartyState.NOT_READY;
+    maxListSize = 99;
+}
+
+export circuit addOrganizer(newOrganizerPk: ZswapCoinPublicKey): [] {
+    const organizer = ownPublicKey();
+    assert(organizers.member(organizer), "You are not an organizer");
+    assert(!organizers.member(disclose(newOrganizerPk)), "You are already in the organizer list");
+    assert(partyState == PartyState.NOT_READY, "The party has already started");
+    
+    organizers.insert(disclose(newOrganizerPk));
+}
+
+export circuit addParticipant(_participantPk: Bytes<32>, _organizerSk: Bytes<32>): [] {
+    // only organizers can add party goers
+    assert(organizers.member(ownPublicKey()), "You are not an organizer");
+    assert(partyState == PartyState.NOT_READY, "The party has already started");
+    assert(partiers < maxListSize, "The list is full.");
+
+    const participant = commitWithSk(_participantPk, _organizerSk);
+    hashedPartyGoers.insert(disclose(participant));
+    partiers.increment(1);
+
+    if (partiers == maxListSize) {
+        // start the party, locally
+        const localPartyState = localStartParty();
+        // don't trust, verify
+        assert(localPartyState == PartyState.READY, "Please start the party, the list is full");
+        partyState = PartyState.READY;
+    }
+}
+
+export circuit checkIn(participantPk: Bytes<32>, _organizerSk: Bytes<32>): [] {
+    assert(organizers.member(ownPublicKey()), "You are not an organizer");
+    assert(partyState == PartyState.READY, "The party has not started yet");
+    assert(checkedInParty.size() < partiers, "All guests have already checked in");
+    assert(hashedPartyGoers.member(commitWithSk(participantPk, _organizerSk)), "You are not on the list");
+
+    checkedInParty.insert(disclose(participantPk));
+}
+
+export circuit chainStartParty(): [] {
+    assert(organizers.member(ownPublicKey()), "Only organizers can start the party");
+    assert(partyState == PartyState.NOT_READY, "The party has already started");
+
+    const localPartyState = disclose(localStartParty());
+    assert(localPartyState == PartyState.READY, "Please start the party locally");
+    partyState = localPartyState;
+}
+
+circuit commitWithSk(_participantPk: Bytes<32>, _sk: Bytes<32>) : Bytes<32> {
+    return disclose(persistentHash<Vector<2, Bytes<32>>>([_participantPk, _sk]));
+}
+
+export circuit publicKey(_sk: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>([pad(32, "private-party:pk:"), _sk]);
+}
