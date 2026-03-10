@@ -2,6 +2,7 @@
 
 The private-party contract is a beginner level contract that will demonstrate the following features:
 - Hiding information on the public ledger
+- Verifying hidden ledger information later
 - Access control to circuits
 - Operations on a set
 - Introduction to Witness functions
@@ -66,9 +67,6 @@ Add the following to `package.json`:
   },
   "devDependencies": {
     "@types/node": "^25.3.2",
-    "@types/ws": "^8.18.1",
-    "@typescript-eslint/eslint-plugin": "^8.56.1",
-    "@typescript-eslint/parser": "^8.56.1",
     "testcontainers": "^11.12.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
@@ -82,7 +80,7 @@ Add the following to `package.json`:
 }
 ```
 
-Install depedencies:
+Install the depedencies:
 ```bash
 npm install
 ```
@@ -124,6 +122,7 @@ All values with the `ledger` declaration are *public* values. Compact comes with
 Organizers will be public information through their public key in the Set of `organizers`, which is represented through the `ZswapCoinPublicKey` type.
 
 ### Witness function signature
+
 The Compact code will only be aware of the function signature of our witness code. In this way, Compact does not actually need to know the underlying code in the frontend -- we can still enforce correct execution there through our use of `assert()` statements in the backend.
 
 Add the witness function signature:
@@ -497,7 +496,7 @@ Now we need to create functions in our simulator for the circuits in our contrac
         // checkIn
         // chainStartParty
 ```
-Here we demonstrate the shape of circuit calls, what would the other definitions look like? Be sure to try them yourself before lookig up the solution below -- the rest have very similar types and data shapes, with only some minor differences.
+Here we demonstrate the shape of circuit calls, what would the other definitions look like? Be sure to try them yourself before looking up the solution below -- the rest have very similar types and data shapes, with only some minor differences.
 
 
 Now the solutions:

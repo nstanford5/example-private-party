@@ -16,14 +16,14 @@ export ledger maxListSize: Uint<8>;
 witness localStartParty() : PartyState;
 
 constructor(){
+    // the publicKey of the caller of this function
     organizers.insert(ownPublicKey());
     partyState = PartyState.NOT_READY;
     maxListSize = 99;
 }
 
 export circuit addOrganizer(newOrganizerPk: ZswapCoinPublicKey): [] {
-    const organizer = ownPublicKey();
-    assert(organizers.member(organizer), "You are not an organizer");
+    assert(organizers.member(ownPublicKey()), "You are not an organizer");
     assert(!organizers.member(disclose(newOrganizerPk)), "You are already in the organizer list");
     assert(partyState == PartyState.NOT_READY, "The party has already started");
     
@@ -41,7 +41,6 @@ export circuit addParticipant(_participantPk: Bytes<32>, _organizerSk: Bytes<32>
     partiers.increment(1);
 
     if (partiers == maxListSize) {
-        // start the party, locally
         const localPartyState = localStartParty();
         // don't trust, verify
         assert(localPartyState == PartyState.READY, "Please start the party, the list is full");
