@@ -4,7 +4,8 @@ import {
     createConstructorContext,
     CostModel,
     QueryContext,
-    sampleUserAddress
+    sampleUserAddress,
+    createCircuitContext
 } from "@midnight-ntwrk/compact-runtime";
 import { 
     Contract,
@@ -20,20 +21,27 @@ import {
 
 export class PartySimulator {
     readonly contract: Contract<PartyPrivateState>;
-    startingState: PartyPrivateState;
+    contractAddress: string;
+    alicePrivateState: PartyPrivateState;
     circuitContext: CircuitContext<PartyPrivateState>;
-    aliceAddr: string;
+    bobContext: CircuitContext<PartyPrivateState>;
+    aliceAddress: string;
+    bobAddress: string;
+    bobPrivateState: PartyPrivateState;
 
     constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
-        this.startingState = createPartyPrivateState(PartyState.NOT_READY);
-        this.aliceAddr = sampleUserAddress();
+        this.contractAddress = sampleContractAddress();
+        this.alicePrivateState = createPartyPrivateState(PartyState.NOT_READY);
+        this.aliceAddress = sampleUserAddress();
+        this.bobAddress = sampleUserAddress();
+        this.bobPrivateState = createPartyPrivateState(PartyState.NOT_READY);
         const {
             currentPrivateState,
             currentContractState,
             currentZswapLocalState
         } = this.contract.initialState(
-            createConstructorContext(this.startingState, this.aliceAddr)
+            createConstructorContext(this.alicePrivateState, this.aliceAddress)
         );
         this.circuitContext = {
             currentPrivateState,
@@ -41,9 +49,16 @@ export class PartySimulator {
             costModel: CostModel.initialCostModel(),
             currentQueryContext: new QueryContext(
                 currentContractState.data,
-                sampleContractAddress(),
+                this.contractAddress,
             ),
         };
+        // context to switch the caller to bob in bobSwitch()
+        this.bobContext = createCircuitContext(
+            this.contractAddress,
+            this.bobAddress,
+            currentContractState,// this may be wrong?
+            this.bobPrivateState,
+        );
     }// end of constructor
 
     // contract circuit wrappers
@@ -80,7 +95,12 @@ export class PartySimulator {
     public getLedger(): Ledger {
         return ledger(this.circuitContext.currentQueryContext.state);
     }
+    
     public getPrivateState(): PartyPrivateState {
         return this.circuitContext.currentPrivateState;
+    }
+    
+    public bobSwitch(): void {
+        this.circuitContext = this.bobContext;
     }
 }// end of class

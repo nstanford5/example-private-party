@@ -77,4 +77,57 @@ describe("Private Party smart contract", () => {
         expect(newLedgerState.checkedInParty.member(participant)).toBeTruthy();
         expect(newLedgerState.checkedInParty.size()).toEqual(1n);
     });
+    it("blocks Bob from adding an organizer", () => {
+        const sim = new PartySimulator();
+
+        sim.bobSwitch();// switch the caller to bob
+
+        expect(() => {
+            sim.addOrganizer(randomBytes(32));
+        }).toThrow("You are not an organizer");
+    });
+    it("blocks Bob from adding a participant", () => {
+        const sim = new PartySimulator();
+        const sk = randomBytes(32);
+        const pk = randomBytes(32);
+        sim.addParticipant(pk, sk);
+
+        sim.bobSwitch();
+        const newPk = randomBytes(32);
+        const newSk = randomBytes(32);
+
+        expect(() => {
+            sim.addParticipant(newPk, newSk);
+        }).toThrow("You are not an organizer");
+    });
+    it("blocks Bob from checking in participants", () => {
+        const sim = new PartySimulator();
+        const organizerSk = randomBytes(32);
+        const persistPk = randomBytes(32);
+        sim.addParticipant(persistPk, organizerSk);
+        for(let i = 0; i < 23; i++){
+            sim.addParticipant(randomBytes(32), organizerSk);
+        };
+        sim.chainStartParty();
+        const ledgerState = sim.getLedger();
+        expect(ledgerState.partyState).toEqual(PartyState.READY);
+
+        sim.bobSwitch();// quick, hit the bob switch!
+        const bobSk = randomBytes(32);
+        expect(() => {
+            sim.checkIn(persistPk, bobSk);
+        }).toThrow("You are not an organizer");
+    });
+    it("blocks Bob from starting the party", () => {
+        const sim = new PartySimulator();
+        const organizerSk = randomBytes(32);
+        for(let i = 0; i < 99; i++){
+            sim.addParticipant(randomBytes(32), organizerSk);
+        }
+        
+        sim.bobSwitch();
+        expect(() => {
+            sim.chainStartParty();
+        }).toThrow("Only organizers can start the party");
+    });
 });
