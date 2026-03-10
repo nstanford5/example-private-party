@@ -11,11 +11,11 @@ export const createPartyPrivateState = (partyState: number) => ({
     partyState,
 });
 
-// start the tutorial here
+// witness function definition(s)
 export const witnesses = {
     localStartParty: ({
-        privateState// always pass in the current state
-        // WitnessContext is always the first argument, followed by startParty params
+        privateState// always pass in the current private state
+        // WitnessContext is always the first argument, followed by localStartParty params
     }: WitnessContext<Ledger, PartyPrivateState>): [
         // return types
         PartyPrivateState,// always return the state
