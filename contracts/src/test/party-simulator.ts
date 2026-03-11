@@ -28,6 +28,7 @@ export class PartySimulator {
     bobContext: CircuitContext<PartyPrivateState>;
     aliceAddress: string;
     bobAddress: string;
+    prevContext: CircuitContext<PartyPrivateState>;
 
     constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
@@ -36,6 +37,7 @@ export class PartySimulator {
         this.aliceAddress = sampleUserAddress();
         this.bobAddress = sampleUserAddress();
         this.bobPrivateState = createPartyPrivateState(PartyState.NOT_READY);
+
         const {
             currentPrivateState,
             currentContractState,
@@ -52,14 +54,17 @@ export class PartySimulator {
                 this.contractAddress,
             ),
         };
+        this.prevContext = this.circuitContext;
         // context to switch the caller to bob in bobSwitch()
         this.bobContext = createCircuitContext(
             this.contractAddress,
             this.bobAddress,
-            currentContractState,// how do I query for the state of an existing contract?
+            currentContractState.data,
             this.bobPrivateState,
         );
     }// end of constructor
+
+
 
     // contract circuit wrappers
     public addOrganizer(newOrganizerPk: Uint8Array): void {
@@ -99,8 +104,13 @@ export class PartySimulator {
     public getPrivateState(): PartyPrivateState {
         return this.circuitContext.currentPrivateState;
     }
-    
+
     public bobSwitch(): void {
+        this.prevContext = this.circuitContext;
         this.circuitContext = this.bobContext;
+    }
+
+    public aliceSwitch(): void {
+        this.circuitContext = this.prevContext;
     }
 }// end of class
