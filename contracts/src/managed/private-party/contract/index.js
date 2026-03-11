@@ -97,14 +97,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('addOrganizer',
                                      'argument 1 (as invoked from Typescript)',
-                                     'private-party.compact line 24 char 1',
+                                     'private-party.compact line 25 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(newOrganizerPk_0) === 'object' && newOrganizerPk_0.bytes.buffer instanceof ArrayBuffer && newOrganizerPk_0.bytes.BYTES_PER_ELEMENT === 1 && newOrganizerPk_0.bytes.length === 32)) {
           __compactRuntime.typeError('addOrganizer',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'private-party.compact line 24 char 1',
+                                     'private-party.compact line 25 char 1',
                                      'struct ZswapCoinPublicKey<bytes: Bytes<32>>',
                                      newOrganizerPk_0)
         }
@@ -179,21 +179,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (as invoked from Typescript)',
-                                     'private-party.compact line 52 char 1',
+                                     'private-party.compact line 51 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(participantPk_0.buffer instanceof ArrayBuffer && participantPk_0.BYTES_PER_ELEMENT === 1 && participantPk_0.length === 32)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'private-party.compact line 52 char 1',
+                                     'private-party.compact line 51 char 1',
                                      'Bytes<32>',
                                      participantPk_0)
         }
         if (!(_organizerSk_0.buffer instanceof ArrayBuffer && _organizerSk_0.BYTES_PER_ELEMENT === 1 && _organizerSk_0.length === 32)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'private-party.compact line 52 char 1',
+                                     'private-party.compact line 51 char 1',
                                      'Bytes<32>',
                                      _organizerSk_0)
         }
@@ -222,7 +222,7 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('chainStartParty',
                                      'argument 1 (as invoked from Typescript)',
-                                     'private-party.compact line 61 char 1',
+                                     'private-party.compact line 60 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
@@ -423,23 +423,25 @@ export class Contract {
     return result_0;
   }
   _addOrganizer_0(context, partialProofData, newOrganizerPk_0) {
-    const organizer_0 = this._ownPublicKey_0(context, partialProofData);
-    __compactRuntime.assert(_descriptor_2.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                      partialProofData,
-                                                                                      [
-                                                                                       { dup: { n: 0 } },
-                                                                                       { idx: { cached: false,
-                                                                                                pushPath: false,
-                                                                                                path: [
-                                                                                                       { tag: 'value',
-                                                                                                         value: { value: _descriptor_5.toValue(0n),
-                                                                                                                  alignment: _descriptor_5.alignment() } }] } },
-                                                                                       { push: { storage: false,
-                                                                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(organizer_0),
-                                                                                                                                              alignment: _descriptor_3.alignment() }).encode() } },
-                                                                                       'member',
-                                                                                       { popeq: { cached: true,
-                                                                                                  result: undefined } }]).value),
+    let tmp_0;
+    __compactRuntime.assert((tmp_0 = this._ownPublicKey_0(context,
+                                                          partialProofData),
+                             _descriptor_2.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                       partialProofData,
+                                                                                       [
+                                                                                        { dup: { n: 0 } },
+                                                                                        { idx: { cached: false,
+                                                                                                 pushPath: false,
+                                                                                                 path: [
+                                                                                                        { tag: 'value',
+                                                                                                          value: { value: _descriptor_5.toValue(0n),
+                                                                                                                   alignment: _descriptor_5.alignment() } }] } },
+                                                                                        { push: { storage: false,
+                                                                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(tmp_0),
+                                                                                                                                               alignment: _descriptor_3.alignment() }).encode() } },
+                                                                                        'member',
+                                                                                        { popeq: { cached: true,
+                                                                                                   result: undefined } }]).value)),
                             'You are not an organizer');
     __compactRuntime.assert(!_descriptor_2.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                        partialProofData,
@@ -553,7 +555,7 @@ export class Contract {
                                                                                                                   alignment: _descriptor_5.alignment() } }] } },
                                                                                        { popeq: { cached: false,
                                                                                                   result: undefined } }]).value),
-                            'The list is full.');
+                            'The list is full');
     const participant_0 = this._commitWithSk_0(_participantPk_0, _organizerSk_0);
     __compactRuntime.queryLedgerState(context,
                                       partialProofData,
@@ -1100,7 +1102,7 @@ export const pureCircuits = {
     if (!(_sk_0.buffer instanceof ArrayBuffer && _sk_0.BYTES_PER_ELEMENT === 1 && _sk_0.length === 32)) {
       __compactRuntime.typeError('publicKey',
                                  'argument 1',
-                                 'private-party.compact line 74 char 1',
+                                 'private-party.compact line 73 char 1',
                                  'Bytes<32>',
                                  _sk_0)
     }

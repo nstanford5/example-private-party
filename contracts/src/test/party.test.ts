@@ -82,7 +82,9 @@ describe("Private Party smart contract", () => {
     it("blocks Bob from adding an organizer", () => {
         const sim = new PartySimulator();
 
-        sim.bobSwitch();// switch the caller to bob
+        // sim.bobSwitch();// switch the caller to bob
+        const bobSk = randomBytes(32);
+        sim.bobSwitch();
 
         expect(() => {
             sim.addOrganizer(randomBytes(32));
@@ -123,7 +125,7 @@ describe("Private Party smart contract", () => {
     it("blocks Bob from starting the party", () => {
         const sim = new PartySimulator();
         const organizerSk = randomBytes(32);
-        for(let i = 0; i < 99; i++){
+        for(let i = 0; i < 22; i++){
             sim.addParticipant(randomBytes(32), organizerSk);
         }
         
@@ -131,5 +133,12 @@ describe("Private Party smart contract", () => {
         expect(() => {
             sim.chainStartParty();
         }).toThrow("Only organizers can start the party");
+
+        sim.aliceSwitch();
+        sim.chainStartParty();
+        const ledgerState = sim.getLedger();
+        expect(ledgerState.partyState).toEqual(PartyState.READY);
+        // aliceSwitch persists ledger state
+        expect(ledgerState.partiers).toEqual(22n);
     });
 });
