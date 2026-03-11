@@ -9,7 +9,9 @@ setNetworkId('undeployed' as NetworkId);
 describe("Private Party smart contract", () => {
     it("executes the constructor correctly", () => {
         const sim = new PartySimulator();// create new simulator instance
-        const ledgerState = sim.getLedger();// invoke helper function to return current state
+        
+        // invoke helper function to return current ledger state
+        const ledgerState = sim.getLedger();
         
         // tests
         expect(ledgerState.organizers.size()).toEqual(1n);

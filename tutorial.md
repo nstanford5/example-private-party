@@ -91,6 +91,7 @@ mkdir contracts && cd contracts
 mkdir src && cd src
 touch private-party.compact
 ```
+
 Open the `.compact` file in your text editor and start with some declarations:
 ```compact
 pragma language_version 0.21;
@@ -101,9 +102,9 @@ export enum PartyState {
     READY
 }
 ```
-- line 1 specifies the compatible version of the Compact language
-- line 2 imports the `CompactStandardLibrary` which provides standard types and circuits for use in Compact programs
-- lines 4-7 declare a custom data type through `enum` and assign it two avaible values `NOT_READY, READY`
+- line 1 specifies the compatible version of the Compact language.
+- line 2 imports the `CompactStandardLibrary` which provides standard types and circuits for use in Compact programs.
+- lines 4-7 declare a custom data type through `enum` and assign it two avaible values `NOT_READY, READY`.
 
 ### Identifier declarations
 
@@ -142,9 +143,9 @@ constructor() {
     maxListSize = 99;
 }
 ```
-- line 19 uses `insert` on the `organizers` Set to add the public key of the caller
-- line 20 sets the public partyState variable to `NOT_READY`
-- line 21 arbitrarily sets the max guest list size to `99`
+- line 19 uses `insert` on the `organizers` Set to add the public key of the caller.
+- line 20 sets the public `partyState` variable to `NOT_READY`.
+- line 21 arbitrarily sets the max guest list size to `99`.
 
 ### Add Organizer Circuit
 
@@ -160,15 +161,15 @@ export circuit addOrganizer(newOrganizerPk: ZswapCoinPublicKey): [] {
 }
 ```
 - line 24 is the signature of the circuit `addOrganizer`  
-    - `export` makes this circuit available outside of the contract  
-    - `(newOrganizerPk: ZswapCoinPublicKey)` takes the public key of the organizer to be added to the Set as an input parameter  
-    - `[]` denotes that this circuit has no return value  
-- line 25 `ownPublicKey()` grabs the publicKey of the caller and stores it 
+    - `export` makes this circuit available outside of the contract.
+    - `(newOrganizerPk: ZswapCoinPublicKey)` takes the public key of the organizer to be added to the Set as an input parameter.
+    - `[]` denotes that this circuit has no return value.
+- line 25 `ownPublicKey()` grabs the publicKey of the caller and stores it .
 - lines 26-28 are access control checks. These checks verify:
-    - Only an `organizer` can call this function
-    - The organizer to be added is not already in the Set
-    - The party has not started yet
-    - Only after these have been verified to be correct, will the new organizer be added to the public `organizers` set
+    - Only an `organizer` can call this function.
+    - The organizer to be added is not already in the Set.
+    - The party has not started yet.
+    - Only after these have been verified to be correct, will the new organizer be added to the public `organizers` set.
 
 :::note
 Information passed through parameters to and inside of Compact circuits is *private by default* and not including explicit `disclosure()` when a value may be exposed publicly, will result in a compiler error.
@@ -185,7 +186,7 @@ circuit commitWithSk(_participantPk: Bytes<32>, _sk: Bytes<32>) : Bytes<32> {
 }
 ```
 - line 71 is the signature
-    - note there is no `export`, so this function is only available to this contract internally
+    - note there is no `export`, so this function is only available to this contract internally.
     - The circuit takes in the public key to be hashed and the secret key of the organizer hashing the information. Remember that circuit inputs are private, so it is safe to pass this information here.
 - line 72 returns the hash after `disclose()`ing it. Attempting to post this hash to the ledger before `disclose()` will result in a compiler error.
 
@@ -209,14 +210,14 @@ export circuit addParticipant(_participantPk: Bytes<32>, _organizerSk: Bytes<32>
     }
 }
 ```
-- lines 35-37 are access control `assert`ions
-- line 39 calls the `commitWithSk()` circuit and returns the hash of the participant
-- line 40 inserts that hash into the Set of `hashedPartyGoers`
-- line 41 increments the counter for number of invited attendees
-- line 43 checks if the list is full
-- line 45 calls the witness function `localStartParty()` in the frontend
+- lines 35-37 are access control `assert`ions.
+- line 39 calls the `commitWithSk()` circuit and returns the hash of the participant.
+- line 40 inserts that hash into the Set of `hashedPartyGoers`.
+- line 41 increments the counter for number of invited attendees.
+- line 43 checks if the list is full.
+- line 45 calls the witness function `localStartParty()` in the frontend.
 - line 47 `assert`s the correct return from the frontend function. In this way, we can guarantee the frontend function returns what we expect it to.
-- line 48 updates the ledger variable `partyState`
+- line 48 updates the ledger variable `partyState`.
 
 ### Start the party (on-chain)
 
@@ -231,10 +232,10 @@ export circuit chainStartParty(): [] {
     partyState = localPartyState;
 }
 ```
-- lines 62-63 are access control checks
-- line 65 discloses the return of the frontend `localStartParty()` function
-- line 66 `assert`s that verifies the return value is correct
-- line 67 updates the `partyState` ledger variable
+- lines 62-63 are access control checks.
+- line 65 discloses the return of the frontend `localStartParty()` function.
+- line 66 `assert`s that verifies the return value is correct.
+- line 67 updates the `partyState` ledger variable.
 
 ### Check-in to the party
 
@@ -250,13 +251,13 @@ export circuit checkIn(participantPk: Bytes<32>, _organizerSk: Bytes<32>): [] {
 }
 ```
 - lines 53-55 are access control checks verifying:
-    - The caller is an organizer
-    - Party state is as expected
-    - Not all guests have checked in
+    - The caller is an organizer.
+    - Party state is as expected.
+    - Not all guests have checked in.
 - line 56 is the interesting line here in that it is how we check previously hashed information. We cannot "unhash" the existing hash, the value under it is hidden forever. What we can do is have the user provide the value again, hash the value again and compare the hashes. When hashing the exact same information, we expect the exact same hash.
 - line 57 provides the `disclose` to let the compiler know that the information is now marked as public and stored in `checkedInParty`.
 
-That's all folks, that's all of the Compact code we need to start our private party contract in about 75 lines. Let's make sure the program compiles, from the `src` directory:
+That's all folks, all of the Compact code we need to start our private party contract in about 75 lines. Let's make sure the program compiles, from the `src` directory:
 ```bash
 compact compile private-party.compact managed/private-party
 ```
@@ -293,7 +294,8 @@ Now that the contract compiles correctly, let's move on to defining the witness 
 
 Before writing any Typescript, make sure to create the config file in the `contracts` directory:
 ```bash
-touch contracts/tsconfig.json
+cd ..
+touch tsconfig.json
 ```
 
 Populate the config file:
@@ -325,6 +327,7 @@ Populate the config file:
 
 In our Compact contract, we declared a witness function. As a reminder, the witness function only has a signature declaration in Compact, it is actually defined in the frontend of the DApp, which is why we *don't trust any witness* but we must *verify* information from witnesses. Enough philosophy, let's create our frontend witness file:
 ```bash
+cd src
 touch src/witnesses.ts
 ```
 
@@ -350,7 +353,7 @@ export const createPartyPrivateState = (partyState: number) => ({
 });
 ```
 
-Now let's move on to our witness function. The input parameters and returns *must exactly match* the function signature declaration in our .`compact` file. As a reminder, that signature is `localStartParty() : PartyState`. Let's see what that looks like in the frontend:
+Now let's move on to our witness function. The input parameters and returns *must exactly match* the function signature declaration in our `.compact` file. As a reminder, that signature is `localStartParty() : PartyState`. Let's see what that looks like in the frontend:
 ```ts
 export const witnesses = {
     localStartParty: ({
@@ -361,28 +364,23 @@ export const witnesses = {
     ] => [privateState, PartyState.READY],
 };
 ```
-1. line 27 is an object to hold all of the witness functions from the contract.
-1. line 28 begins the definition of `localStartParty`.
-1. line 29 passes `privateState` as a parameter and this *must be included* here for all witness functions.
-1. line 30 passes the first parameter our witness function and *must always include* the `WitnessContext<L, PS>`. This can be followed by any other parameters defined by localStartParty in the contract.
-1. lines 31-32 are the return types. The witness function must always pass the private state as its first argument.
-1. line 33 returns the actual values for the corresponding return types.
-
-
-
-2. export type PartyPrivateState
-3. export const createPartyPrivateState (for use later)
+- line 27 is an object to hold all of the witness functions from the contract.
+- line 28 begins the definition of `localStartParty`.
+- line 29 passes `privateState` as a parameter and this *must be included* here for all witness functions.
+- line 30 passes the first parameter our witness function and *must always include* the `WitnessContext<L, PS>`. This can be followed by any other parameters defined by localStartParty in the contract.
+- lines 31-32 are the return types. The witness function must always pass the private state as its first argument.
+- line 33 returns the actual values for the corresponding return types.
 
 ## Party Simulator
-In order to run many tests against our private-party contract, we'll need to create a class that will be used to initiate different test cases.
 
+In order to run many tests against our private-party contract, we'll need to create a class that will be used to initiate different test cases:
 ```bash
 cd contracts/src
-mkdir test
+mkdir test && cd test
 touch party-simulator.ts
 ```
 
-Open the party-simulator.ts file in your VSCode
+Open the `party-simulator.ts` file in your VSCode
 
 ### Imports
 For now let's just add the necessary imports:
@@ -393,6 +391,8 @@ import {
     createConstructorContext,
     CostModel,
     QueryContext,
+    sampleUserAddress,
+    createCircuitContext
 } from "@midnight-ntwrk/compact-runtime";
 import { 
     Contract,
@@ -421,13 +421,15 @@ export class PartySimulator {
 }
 ```
 
-Let's define the type for our new contract and create a new instance:
+Let's define the type for our new contract, create a new instance and make an address:
 ```ts
 export class PartySimulator {
     readonly contract: Contract<PartyPrivateState>;
+    contractAddress: string;
 
     constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
+        this.contractAddress = sampleContractAddress();
     }
 }
 ```
@@ -436,40 +438,51 @@ Now we create the initial state of our contract:
 ```ts
 export class PartySimulator {
     readonly contract: Contract<PartyPrivateState>;
-    startingState: PartyPrivateState;
+    contractAddress: string;
+    alicePrivateState: PartyPrivateState;
+    aliceAddress: string;
 
     constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
-        this.startingState = createPartyPrivateState(PartyState.NOT_READY);
+        this.contractAddress = sampleContractAddress();
+        this.alicePrivateState = createPartyPrivateState(PartyState.NOT_READY);
+        this.aliceAddress = sampleUserAddress();
         const {
             currentPrivateState,
             currentContractState,
             currentZswapLocalState
         } = this.contract.initialState(
-            createConstructorContext(this.startingState, "0".repeat(64))
+            createConstructorContext(this.alicePrivateState, this.aliceAddress)
         );
     }
 }
 ```
 
-Now we need to provide context for the circuits, based on the returns from our initial state:
+Now we need to provide context for executing circuits:
 ```ts
 export class PartySimulator {
     readonly contract: Contract<PartyPrivateState>;
-    startingState: PartyPrivateState;
+    contractAddress: string;
+    alicePrivateState: PartyPrivateState;
+    aliceAddress: string;
     circuitContext: CircuitContext<PartyPrivateState>;// new
-```
+    bobAddress: string; // new
+    bobPrivateState: PartyPrivateState;// new
+    bobContext: CircuitContext<PartyPrivateState>;// new
 
-```ts
-constructor() {
+    constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
-        this.startingState = createPartyPrivateState(PartyState.NOT_READY);
+        this.contractAddress = sampleContractAddress();
+        this.alicePrivateState = createPartyPrivateState(PartyState.NOT_READY);
+        this.aliceAddress = sampleUserAddress();
+        this.bobAddress = sampleUserAddress();// new
+        this.bobPrivateState = createPartyPrivateState(PartyState.NOT_READY);// new
         const {
             currentPrivateState,
             currentContractState,
             currentZswapLocalState
         } = this.contract.initialState(
-            createConstructorContext(this.startingState, "0".repeat(64))
+            createConstructorContext(this.alicePrivateState, this.aliceAddress)
         );
         this.circuitContext = {// new
             currentPrivateState,
@@ -477,24 +490,30 @@ constructor() {
             costModel: CostModel.initialCostModel(),
             currentQueryContext: new QueryContext(
                 currentContractState.data,
-                sampleContractAddress(),
+                this.contractAddress,
             )
-        }
-    }
+        };
+        this.bobContext = createCircuitContext(
+            this.contractAddress,
+            this.bobAddress,
+            currentContractState,
+            this.bobPrivateState,
+        );
+    }// end of constructor
 ```
 
 Now we need to create functions in our simulator for the circuits in our contract, add this just below the constructor:
 ```ts
 // addOrganizer
-        public addOrganizer(newOrganizerPk: Uint8Array): void {
-            this.circuitContext = this.contract.impureCircuits.addOrganizer(
-                this.circuitContext,// always pass as first argument
-                { bytes: newOrganizerPk }
-            ).context;
-        }
-        // addParticipant
-        // checkIn
-        // chainStartParty
+    public addOrganizer(newOrganizerPk: Uint8Array): void {
+        this.circuitContext = this.contract.impureCircuits.addOrganizer(
+            this.circuitContext,// always pass as first argument
+            { bytes: newOrganizerPk }
+        ).context;
+    }
+    // addParticipant
+    // checkIn
+    // chainStartParty
 ```
 Here we demonstrate the shape of circuit calls, what would the other definitions look like? Be sure to try them yourself before looking up the solution below -- the rest have very similar types and data shapes, with only some minor differences.
 
@@ -502,76 +521,56 @@ Here we demonstrate the shape of circuit calls, what would the other definitions
 Now the solutions:
 ```ts
     }// end of constructor
-        // addOrganizer
-        public addOrganizer(newOrganizerPk: Uint8Array): void {
-            this.circuitContext = this.contract.impureCircuits.addOrganizer(
-                this.circuitContext,
-                { bytes: newOrganizerPk },// transform ZswapPublicCoin -> Bytes<32>
-            ).context;
-        }
-        // addParticipant
-        public addParticipant(participantPk: Uint8Array, organizerSk: Uint8Array): void {
-            this.circuitContext = this.contract.impureCircuits.addParticipant(
-                this.circuitContext,
-                participantPk,
-                organizerSk,
-            ).context;
-        }
-        // checkIn
-        public checkIn(participantPk: Uint8Array, organizerSk: Uint8Array): void {
-            this.circuitContext = this.contract.impureCircuits.checkIn(
-                this.circuitContext,
-                participantPk,
-                organizerSk,
-            ).context;
-        }
-        // chainStartParty
-        public chainStartParty(): void {
-            this.circuitContext = this.contract.impureCircuits.chainStartParty(
-                this.circuitContext,
-            ).context;
-        }
+    // addOrganizer
+    public addOrganizer(newOrganizerPk: Uint8Array): void {
+        this.circuitContext = this.contract.impureCircuits.addOrganizer(
+            this.circuitContext,
+            { bytes: newOrganizerPk },// transform ZswapPublicCoin -> Bytes<32>
+        ).context;
+    }
+    // addParticipant
+    public addParticipant(participantPk: Uint8Array, organizerSk: Uint8Array): void {
+        this.circuitContext = this.contract.impureCircuits.addParticipant(
+            this.circuitContext,
+            participantPk,
+            organizerSk,
+        ).context;
+    }
+    // checkIn
+    public checkIn(participantPk: Uint8Array, organizerSk: Uint8Array): void {
+        this.circuitContext = this.contract.impureCircuits.checkIn(
+            this.circuitContext,
+            participantPk,
+            organizerSk,
+        ).context;
+    }
+    // chainStartParty
+    public chainStartParty(): void {
+        this.circuitContext = this.contract.impureCircuits.chainStartParty(
+            this.circuitContext,
+        ).context;
+    }
 }// end of class
 ```
 
 It will also be useful to define some helper functions for use in our tests, add these after your `chainStartParty` function:
 ```ts
-        // helper functions
-        public getLedger(): Ledger {
-            return ledger(this.circuitContext.currentQueryContext.state);
-        }
-        public getPrivateState(): PartyPrivateState {
-            return this.circuitContext.currentPrivateState;
-        }
+    // helper functions
+    public getLedger(): Ledger {
+        return ledger(this.circuitContext.currentQueryContext.state);
+    }
+    public getPrivateState(): PartyPrivateState {
+        return this.circuitContext.currentPrivateState;
+    }
+    public bobSwitch(): void {
+        this.circuitContext = this.bobContext;
+    }
 }// end of class
 ```
 
 And that is all for Simulator code -- we can now create instances of our party contract quickly and efficiently! Let's finish the setup before moving on to writing tests.
 
-### More setup
-
-Create the `src/index.ts` file:
-```bash
-touch src/index.ts
-```
-
-Populate the `index.ts` file: @TODO -- do I need this?
-```ts
-import { CompiledContract } from '@midnight-ntwrk/compact-js';
-export * from './managed/private-party/contract/index.js';
-export * from './witnesses';
-
-import * as CompiledPartyContract from './managed/private-party/contract/index.js';
-import * as Witnesses from './witnesses';
-
-export const CompiledPartyContractContract = CompiledContract.make<CompiledPartyContract.Contract<Witnesses.PartyPrivateState>>(
-    "Private Party",
-    CompiledPartyContract.Contract<Witnesses.PartyPrivateState>,
-).pipe(
-    CompiledContract.withWitnesses(Witnesses.witnesses),
-    CompiledContract.withCompiledFileAssets('./compiled/private-party'),
-);
-```
+### Setup for Tests
 
 Create the `vitest.config.ts` file:
 ```bash
@@ -623,7 +622,7 @@ First, let's create our test file:
 touch test/party.test.ts
 ```
 
-Declare imports (this may be tempting to copy/paste, but you should write these out by hand to better understand the location and purpose of specific imports):
+Declare imports:
 ```ts
 import { PartySimulator } from './party-simulator.js';
 import { NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -631,7 +630,7 @@ import { describe, it, expect } from 'vitest';
 import { PartyState } from '../managed/private-party/contract/index.js';
 ```
 
-Set the networkId to undeployed:
+Set the network Id to "undeployed":
 ```ts
 setNetworkId('undeployed' as NetworkId);
 ```
@@ -663,3 +662,5 @@ it ("adds an organizer", () => {});
 ```
 
 Make sure to write as many tests as you can think of!
+
+After writing tests of your own, you can view the full repository for this tutorial here: [replace this link to `example-private-party` repo](https://github.com/nstanford5/example-private-party)

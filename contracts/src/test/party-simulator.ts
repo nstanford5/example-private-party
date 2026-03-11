@@ -23,11 +23,11 @@ export class PartySimulator {
     readonly contract: Contract<PartyPrivateState>;
     contractAddress: string;
     alicePrivateState: PartyPrivateState;
+    bobPrivateState: PartyPrivateState;
     circuitContext: CircuitContext<PartyPrivateState>;
     bobContext: CircuitContext<PartyPrivateState>;
     aliceAddress: string;
     bobAddress: string;
-    bobPrivateState: PartyPrivateState;
 
     constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
@@ -56,7 +56,7 @@ export class PartySimulator {
         this.bobContext = createCircuitContext(
             this.contractAddress,
             this.bobAddress,
-            currentContractState,// this may be wrong?
+            currentContractState,// how do I query for the state of an existing contract?
             this.bobPrivateState,
         );
     }// end of constructor
