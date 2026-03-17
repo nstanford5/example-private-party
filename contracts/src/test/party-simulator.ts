@@ -6,13 +6,13 @@ import {
     QueryContext,
     sampleUserAddress,
     createCircuitContext,
-    ChargedState
+    ChargedState,
+    encodeCoinPublicKey
 } from "@midnight-ntwrk/compact-runtime";
 import { 
     Contract,
     type Ledger,
     ledger,
-    PartyState,
  } from "../managed/private-party/contract/index.js";
 import { 
     type PartyPrivateState, 
@@ -25,18 +25,9 @@ export class PartySimulator {
     readonly contract: Contract<PartyPrivateState>;
     contractAddress: string;
     alicePrivateState: PartyPrivateState;
-    bobPrivateState: PartyPrivateState;
     circuitContext: CircuitContext<PartyPrivateState>;
-    bobContext: CircuitContext<PartyPrivateState>;
     aliceAddress: string;
     aliceSk: Uint8Array;
-    bobAddress: string;
-    bobSk: Uint8Array;
-    prevContext: CircuitContext<PartyPrivateState>;
-    turnContext: CircuitContext<PartyPrivateState>;
-    userPrivateStates: Record<string, PartyPrivateState>;
-    updateUserPrivateState: (newPrivateState: PartyPrivateState) => void;
-
 
     constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
@@ -44,23 +35,13 @@ export class PartySimulator {
         this.aliceSk = randomBytes(32);
         this.aliceAddress = sampleUserAddress();
         this.alicePrivateState = createPartyPrivateState(this.aliceAddress, this.aliceSk);
-        this.bobAddress = sampleUserAddress();
-        this.bobSk = randomBytes(32);
-        this.bobPrivateState = createPartyPrivateState(this.bobAddress, this.bobSk);
-        this.updateUserPrivateState = (newPrivateState: PartyPrivateState) => {};
+
         const {
             currentPrivateState,
             currentContractState,
             currentZswapLocalState
         } = this.contract.initialState(
             createConstructorContext(this.alicePrivateState, this.aliceAddress)
-        );
-        this.userPrivateStates = { ['alice']: currentPrivateState };
-        this.turnContext = createCircuitContext(
-            this.contractAddress,
-            this.aliceAddress,
-            currentContractState,
-            this.alicePrivateState
         );
         this.circuitContext = {
             currentPrivateState,
@@ -71,34 +52,7 @@ export class PartySimulator {
                 this.contractAddress,
             ),
         };
-        this.prevContext = this.circuitContext;
-        // context to switch the caller to bob in bobSwitch()
-        this.bobContext = createCircuitContext(
-            this.contractAddress,
-            this.bobAddress,
-            currentContractState.data,
-            this.bobPrivateState,
-        );
     }// end of constructor
-
-    public buildTurnContext(currentPrivateState: PartyPrivateState): CircuitContext<PartyPrivateState> {
-        return {
-            ...this.turnContext,
-            currentPrivateState,
-        };
-    }
-
-    public updateUserPrivateStateByName = 
-        (name: string) => 
-        (newPrivateState: PartyPrivateState): void => {
-            this.userPrivateStates[name] = newPrivateState;
-        }
-
-    as(name: string): PartySimulator {
-        this.circuitContext = this.buildTurnContext(this.userPrivateStates[name]);
-        this.updateUserPrivateState = this.updateUserPrivateStateByName(name);
-        return this;
-    }
 
     // contract circuit wrappers
     public addOrganizer(newOrganizerPk: Uint8Array): void {
@@ -132,56 +86,55 @@ export class PartySimulator {
 
     // test helper functions
     public getLedger(): Ledger {
-        // returns ChargedState wrapped in Ledger!
         return ledger(this.circuitContext.currentQueryContext.state);
     }
 
     public getContractState(): ChargedState {
         return this.circuitContext.currentQueryContext.state;
     }
-    
-    public getPrivateState(): PartyPrivateState {
-        return this.circuitContext.currentPrivateState;
-    }
-
-    public bobSwitch(): void {
-        this.prevContext = this.circuitContext;
-        this.circuitContext = this.bobContext;
-    }
-    public bobSwitch2(): void {
-        this.circuitContext = createCircuitContext(
-            this.contractAddress,
-            this.bobAddress,
-            this.circuitContext.currentQueryContext.state,
-            this.bobPrivateState
-        );
-        //this.circuitContext = this.bobContext;
-    }
 
     public switchCallers(callerContext: CircuitContext): void {
         this.circuitContext = callerContext;
     }
 
-    public aliceSwitch(): void {
-        this.circuitContext = this.prevContext;
+    public aliceSwitch(contractState: ChargedState): void {
+        this.circuitContext = createCircuitContext(
+            this.contractAddress,
+            this.aliceAddress,
+            contractState,
+            this.alicePrivateState
+        );
     }
 }// end of class
 
 export class WalletBuilder {
     address: string;
+    encodedAddress: Uint8Array;
     sk: Uint8Array;
     privateState: PartyPrivateState;
     callerContext: CircuitContext<PartyPrivateState>;
+    contractAddress: string;
 
     constructor(contractAddress: string, contractState: ChargedState) {
         this.address = sampleUserAddress();
+        this.encodedAddress = encodeCoinPublicKey(this.address);
         this.sk = randomBytes(32);
+        this.contractAddress = contractAddress;
         this.privateState = createPartyPrivateState(
             this.address,
             this.sk
         );
         this.callerContext = createCircuitContext(
             contractAddress,
+            this.address,
+            contractState,
+            this.privateState
+        );
+    }
+    // use this if the contract state has changed since the creation of the wallet
+    public updateCallerContext(contractState: ChargedState): void {
+        this.callerContext = createCircuitContext(
+            this.contractAddress,
             this.address,
             contractState,
             this.privateState

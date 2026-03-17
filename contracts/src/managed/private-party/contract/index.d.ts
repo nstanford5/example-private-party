@@ -8,7 +8,7 @@ export type Witnesses<PS> = {
 
 export type ImpureCircuits<PS> = {
   addOrganizer(context: __compactRuntime.CircuitContext<PS>,
-               newOrganizerPk_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+               newOrganizer_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
   addParticipant(context: __compactRuntime.CircuitContext<PS>,
                  _participantPk_0: Uint8Array,
                  _organizerSk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
@@ -19,12 +19,11 @@ export type ImpureCircuits<PS> = {
 }
 
 export type PureCircuits = {
-  publicKey(_sk_0: Uint8Array): Uint8Array;
 }
 
 export type Circuits<PS> = {
   addOrganizer(context: __compactRuntime.CircuitContext<PS>,
-               newOrganizerPk_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+               newOrganizer_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
   addParticipant(context: __compactRuntime.CircuitContext<PS>,
                  _participantPk_0: Uint8Array,
                  _organizerSk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
@@ -32,7 +31,6 @@ export type Circuits<PS> = {
           participantPk_0: Uint8Array,
           _organizerSk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   chainStartParty(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
-  publicKey(context: __compactRuntime.CircuitContext<PS>, _sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
 }
 
 export type Ledger = {
@@ -55,7 +53,6 @@ export type Ledger = {
     [Symbol.iterator](): Iterator<Uint8Array>
   };
   readonly partyState: PartyState;
-  readonly partiers: bigint;
   readonly maxListSize: bigint;
 }
 

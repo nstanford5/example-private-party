@@ -3,6 +3,7 @@ import { NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id'
 import { describe, it, expect } from 'vitest';
 import { PartyState } from '../managed/private-party/contract/index.js';
 import { randomBytes } from './utils.js';
+import { sampleUserAddress, encodeCoinPublicKey} from '@midnight-ntwrk/compact-runtime';
 
 setNetworkId('undeployed' as NetworkId);
 
@@ -21,163 +22,177 @@ describe("Private Party smart contract", () => {
     it("adds an organizer", () => {
         const sim = new PartySimulator();
         const initialLedgerState = sim.getLedger();
-        sim.addOrganizer(randomBytes(32));
+
+        const bob = new WalletBuilder(sim.contractAddress, sim.getContractState());
+        sim.addOrganizer(bob.encodedAddress);
         const newLedgerState = sim.getLedger();
 
         expect(initialLedgerState.organizers.size()).toEqual(1n);
         expect(newLedgerState.organizers.size()).toEqual(2n);
     });
     it("adds a participant", () => {
-        const sim0 = new PartySimulator();
-        const participant = randomBytes(32);
-        const organizerSk = randomBytes(32);
-        sim0.addParticipant(participant, organizerSk);
-        const ledgerState = sim0.getLedger();
+        const sim = new PartySimulator();
+        const bob = new WalletBuilder(sim.contractAddress, sim.getContractState());
+        sim.addParticipant(bob.encodedAddress, sim.aliceSk);
 
-        expect(ledgerState.partiers).toEqual(1n);
+        const ledgerState = sim.getLedger();
         expect(ledgerState.hashedPartyGoers.size()).toEqual(1n);
     });
     it("starts the party with a less than full list", () => {
-        const sim0 = new PartySimulator();
-        const organizerSk = randomBytes(32);
+        const sim = new PartySimulator();
         for(let i = 0; i < 25; i++){
-            sim0.addParticipant(randomBytes(32), organizerSk);
+            const address = sampleUserAddress();
+            const encoded = encodeCoinPublicKey(address);
+            sim.addParticipant(encoded, sim.aliceSk);
         }
-        const ledgerState = sim0.getLedger();
+        const ledgerState = sim.getLedger();
         expect(ledgerState.hashedPartyGoers.size()).toEqual(25n);
-
-        sim0.chainStartParty();
-        const newLedgerState = sim0.getLedger();
+        expect(ledgerState.partyState).toEqual(PartyState.NOT_READY);
+        
+        sim.chainStartParty();
+        const newLedgerState = sim.getLedger();
 
         expect(newLedgerState.partyState).toEqual(PartyState.READY);
     });
     it("starts the party with a full list", () => {
-        const sim0 = new PartySimulator();
-        const organizerSk = randomBytes(32);
+        const sim = new PartySimulator();
         for(let i = 0; i < 99; i++){
-            sim0.addParticipant(randomBytes(32), organizerSk);
+            const address = sampleUserAddress();
+            const encoded = encodeCoinPublicKey(address);
+            sim.addParticipant(encoded, sim.aliceSk);
         }
-        const ledgerState = sim0.getLedger();
+        const ledgerState = sim.getLedger();
 
         expect(ledgerState.hashedPartyGoers.size()).toEqual(99n);
         expect(ledgerState.partyState).toEqual(PartyState.READY);
     });
     it("allows participants to check in", () => {
-        const sim0 = new PartySimulator();
-        const organizerSk = randomBytes(32);
+        const sim = new PartySimulator();
         const participant = randomBytes(32);
-        sim0.addParticipant(participant, organizerSk);
+        sim.addParticipant(participant, sim.aliceSk);
         for(let i = 1; i < 25; i++){
-            sim0.addParticipant(randomBytes(32), organizerSk);
+            const address = sampleUserAddress();
+            const encoded = encodeCoinPublicKey(address);
+            sim.addParticipant(encoded, sim.aliceSk);
         }
-        sim0.chainStartParty();
-        const ledgerState = sim0.getLedger();
+        sim.chainStartParty();
+        const ledgerState = sim.getLedger();
         expect(ledgerState.partyState).toEqual(PartyState.READY);
 
-        sim0.checkIn(participant, organizerSk);
-        const newLedgerState = sim0.getLedger();
+        sim.checkIn(participant, sim.aliceSk);
+        const newLedgerState = sim.getLedger();
         expect(newLedgerState.checkedInParty.member(participant)).toBeTruthy();
         expect(newLedgerState.checkedInParty.size()).toEqual(1n);
     });
     it("blocks Bob from adding an organizer", () => {
         const sim = new PartySimulator();
 
-        const bobSk = randomBytes(32);
-        sim.bobSwitch();
+        const bob = new WalletBuilder(sim.contractAddress, sim.getContractState());
+        sim.switchCallers(bob.callerContext);
 
         expect(() => {
-            sim.addOrganizer(randomBytes(32));
+            const address = sampleUserAddress();
+            const encoded = encodeCoinPublicKey(address);
+            sim.addOrganizer(encoded);
         }).toThrow("You are not an organizer");
     });
     it("blocks Bob from adding a participant", () => {
         const sim = new PartySimulator();
-        const sk = randomBytes(32);
-        const pk = randomBytes(32);
-        sim.addParticipant(pk, sk);
+        const address = sampleUserAddress();
+        const encoded = encodeCoinPublicKey(address);
+        sim.addParticipant(encoded, sim.aliceSk);
 
-        sim.bobSwitch();
-        const newPk = randomBytes(32);
-        const newSk = randomBytes(32);
-
+        const bob = new WalletBuilder(sim.contractAddress, sim.getContractState());
+        sim.switchCallers(bob.callerContext);
+        const claire = new WalletBuilder(sim.contractAddress, sim.getContractState());
+        const claireEncoded = encodeCoinPublicKey(claire.address);
         expect(() => {
-            sim.addParticipant(newPk, newSk);
+            sim.addParticipant(claireEncoded, bob.sk);
         }).toThrow("You are not an organizer");
     });
     it("blocks Bob from checking in participants", () => {
         const sim = new PartySimulator();
-        const organizerSk = randomBytes(32);
-        const persistPk = randomBytes(32);
-        sim.addParticipant(persistPk, organizerSk);
+        const persistAddress = sampleUserAddress();
+        const encodedPersist = encodeCoinPublicKey(persistAddress);
+        sim.addParticipant(encodedPersist, sim.aliceSk);
+
         for(let i = 0; i < 23; i++){
-            sim.addParticipant(randomBytes(32), organizerSk);
+            const address = sampleUserAddress();
+            const encoded = encodeCoinPublicKey(address);
+            sim.addParticipant(encoded, sim.aliceSk);
         };
+
         sim.chainStartParty();
         const ledgerState = sim.getLedger();
         expect(ledgerState.partyState).toEqual(PartyState.READY);
 
-        sim.bobSwitch();// quick, hit the bob switch!
-        const bobSk = randomBytes(32);
+        const bob = new WalletBuilder(sim.contractAddress, sim.getContractState());
+        sim.switchCallers(bob.callerContext);
         expect(() => {
-            sim.checkIn(persistPk, bobSk);
+            sim.checkIn(encodedPersist, bob.sk);
         }).toThrow("You are not an organizer");
     });
     it("blocks Bob from starting the party", () => {
         const sim = new PartySimulator();
-        const organizerSk = randomBytes(32);
         for(let i = 0; i < 22; i++){
-            sim.addParticipant(randomBytes(32), organizerSk);
+            const address = sampleUserAddress();
+            const encoded = encodeCoinPublicKey(address);
+            sim.addParticipant(encoded, sim.aliceSk);
         }
         
-        // bobSwitch is a hacky workaround 
-        sim.bobSwitch();
+        // switch to bob
+        const bob = new WalletBuilder(sim.contractAddress, sim.getContractState());
+        sim.switchCallers(bob.callerContext);
         expect(() => {
             sim.chainStartParty();
         }).toThrow("Only organizers can start the party");
 
         // the aliceSwitch just reverts to the state prior to hitting the bobSwitch
         // or, said differently, the most recent valid Alice state
-        sim.aliceSwitch();
+        sim.aliceSwitch(sim.getContractState());
         sim.chainStartParty();
         const ledgerState = sim.getLedger();
         expect(ledgerState.partyState).toEqual(PartyState.READY);
         // aliceSwitch persists ledger state
-        expect(ledgerState.partiers).toEqual(22n);
+        expect(ledgerState.hashedPartyGoers.size()).toEqual(22n);
     });
     it('tests the generic caller switch', () => {
         // the goal in this test is to achieve persistent contract state
         // across different users to be passed in to circuitContext
         const sim = new PartySimulator();
-        const organizerSk = randomBytes(32);
         for(let i = 0; i < 22; i++){
-            sim.addParticipant(randomBytes(32), organizerSk);
+            const address = sampleUserAddress();
+            const encoded = encodeCoinPublicKey(address);
+            sim.addParticipant(encoded, sim.aliceSk);
         }
         const ledgerState = sim.getLedger();
-        expect(ledgerState.partiers).toEqual(22n);
-        let currentContractState = sim.getContractState();
-        const claire = new WalletBuilder(sim.contractAddress, currentContractState);
-        let prevContext = sim.circuitContext;
+        expect(ledgerState.hashedPartyGoers.size()).toEqual(22n);
+        const claire = new WalletBuilder(sim.contractAddress, sim.getContractState());
         sim.switchCallers(claire.callerContext);
         expect(() => {
-            sim.addParticipant(randomBytes(32), organizerSk);
+            const address = sampleUserAddress();
+            const encoded = encodeCoinPublicKey(address);
+            sim.addParticipant(encoded, sim.aliceSk);
         }).toThrow('You are not an organizer');
 
         // switch back to Alice
-        sim.switchCallers(prevContext);
-        sim.addParticipant(randomBytes(32), organizerSk);
+        sim.aliceSwitch(sim.getContractState());
+        const dale = new WalletBuilder(sim.contractAddress, sim.getContractState());
+        sim.addParticipant(dale.encodedAddress, sim.aliceSk);
         const nextLedgerState = sim.getLedger();
         // expect the circuitContext to have a persistent contractState (total number of participants)
-        expect(nextLedgerState.partiers).toEqual(23n);
+        expect(nextLedgerState.hashedPartyGoers.size()).toEqual(23n);
 
-        prevContext = sim.circuitContext;
-        currentContractState = sim.getContractState(); 
-        const dale = new WalletBuilder(sim.contractAddress, currentContractState);
-        sim.switchCallers(dale.callerContext);
+        const edith = new WalletBuilder(sim.contractAddress, sim.getContractState());
+        sim.switchCallers(edith.callerContext);
         expect(() => {
-            sim.addParticipant(randomBytes(32), organizerSk);
+            const address = sampleUserAddress();
+            const encoded = encodeCoinPublicKey(address);
+            sim.addParticipant(encoded, sim.aliceSk);
         }).toThrow('You are not an organizer');
 
         // switch back to Alice
-        sim.switchCallers(prevContext);
+        sim.aliceSwitch(sim.getContractState());
         sim.chainStartParty();
     });
 });

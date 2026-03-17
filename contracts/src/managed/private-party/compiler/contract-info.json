@@ -9,7 +9,7 @@
       "proof": true,
       "arguments": [
         {
-          "name": "newOrganizerPk",
+          "name": "newOrganizer",
           "type": {
             "type-name": "Struct",
             "name": "ZswapCoinPublicKey",
@@ -93,24 +93,6 @@
         "type-name": "Tuple",
         "types": [
         ]
-      }
-    },
-    {
-      "name": "publicKey",
-      "pure": true,
-      "proof": false,
-      "arguments": [
-        {
-          "name": "_sk",
-          "type": {
-            "type-name": "Bytes",
-            "length": 32
-          }
-        }
-      ],
-      "result-type": {
-        "type-name": "Bytes",
-        "length": 32
       }
     }
   ],
