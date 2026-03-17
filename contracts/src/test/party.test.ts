@@ -1,4 +1,4 @@
-import { PartySimulator } from './party-simulator.js';
+import { PartySimulator, WalletBuilder } from './party-simulator.js';
 import { NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { describe, it, expect } from 'vitest';
 import { PartyState } from '../managed/private-party/contract/index.js';
@@ -82,7 +82,6 @@ describe("Private Party smart contract", () => {
     it("blocks Bob from adding an organizer", () => {
         const sim = new PartySimulator();
 
-        // sim.bobSwitch();// switch the caller to bob
         const bobSk = randomBytes(32);
         sim.bobSwitch();
 
@@ -129,16 +128,56 @@ describe("Private Party smart contract", () => {
             sim.addParticipant(randomBytes(32), organizerSk);
         }
         
+        // bobSwitch is a hacky workaround 
         sim.bobSwitch();
         expect(() => {
             sim.chainStartParty();
         }).toThrow("Only organizers can start the party");
 
+        // the aliceSwitch just reverts to the state prior to hitting the bobSwitch
+        // or, said differently, the most recent valid Alice state
         sim.aliceSwitch();
         sim.chainStartParty();
         const ledgerState = sim.getLedger();
         expect(ledgerState.partyState).toEqual(PartyState.READY);
         // aliceSwitch persists ledger state
         expect(ledgerState.partiers).toEqual(22n);
+    });
+    it('tests the generic caller switch', () => {
+        // the goal in this test is to achieve persistent contract state
+        // across different users to be passed in to circuitContext
+        const sim = new PartySimulator();
+        const organizerSk = randomBytes(32);
+        for(let i = 0; i < 22; i++){
+            sim.addParticipant(randomBytes(32), organizerSk);
+        }
+        const ledgerState = sim.getLedger();
+        expect(ledgerState.partiers).toEqual(22n);
+        let currentContractState = sim.getContractState();
+        const claire = new WalletBuilder(sim.contractAddress, currentContractState);
+        let prevContext = sim.circuitContext;
+        sim.switchCallers(claire.callerContext);
+        expect(() => {
+            sim.addParticipant(randomBytes(32), organizerSk);
+        }).toThrow('You are not an organizer');
+
+        // switch back to Alice
+        sim.switchCallers(prevContext);
+        sim.addParticipant(randomBytes(32), organizerSk);
+        const nextLedgerState = sim.getLedger();
+        // expect the circuitContext to have a persistent contractState (total number of participants)
+        expect(nextLedgerState.partiers).toEqual(23n);
+
+        prevContext = sim.circuitContext;
+        currentContractState = sim.getContractState(); 
+        const dale = new WalletBuilder(sim.contractAddress, currentContractState);
+        sim.switchCallers(dale.callerContext);
+        expect(() => {
+            sim.addParticipant(randomBytes(32), organizerSk);
+        }).toThrow('You are not an organizer');
+
+        // switch back to Alice
+        sim.switchCallers(prevContext);
+        sim.chainStartParty();
     });
 });

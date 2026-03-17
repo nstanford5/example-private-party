@@ -3,12 +3,14 @@ import { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 
 // type declaration
 export type PartyPrivateState = {
-    partyState: number;// enum in Compact -> number in TS
+    address: string,
+    sk: Uint8Array
 }
 
 // helper function for making an object of the PrivatePartyState type
-export const createPartyPrivateState = (partyState: number) => ({
-    partyState,
+export const createPartyPrivateState = (address: string, sk: Uint8Array) => ({
+    address,
+    sk
 });
 
 // witness function definition(s)
