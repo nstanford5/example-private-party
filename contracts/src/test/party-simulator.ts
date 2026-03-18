@@ -25,9 +25,10 @@ export class PartySimulator {
     readonly contract: Contract<PartyPrivateState>;
     contractAddress: string;
     alicePrivateState: PartyPrivateState;
-    circuitContext: CircuitContext<PartyPrivateState>;
     aliceAddress: string;
     aliceSk: Uint8Array;
+    circuitContext: CircuitContext<PartyPrivateState>;
+
 
     constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
@@ -55,10 +56,10 @@ export class PartySimulator {
     }// end of constructor
 
     // contract circuit wrappers
-    public addOrganizer(newOrganizerPk: Uint8Array): void {
+    public addOrganizer(newOrganizer: Uint8Array): void {
         this.circuitContext = this.contract.impureCircuits.addOrganizer(
             this.circuitContext,
-            { bytes: newOrganizerPk },// encoded from Uint8Array to Bytes
+            { bytes: newOrganizer },// encoded from Uint8Array to Bytes
         ).context;
     }
 

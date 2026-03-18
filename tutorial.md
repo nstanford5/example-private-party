@@ -17,11 +17,11 @@ Before you begin this tutorial, esure you have:
 
 ## Problem Analysis
 
-Let's say you have a party and want to keep the guest list private. Maybe you want to keep the guests from knowing who each other are or maybe you want to hide the guest list from the public. Midnight allows you to hide this information in plain sight and later verify that information.
+Let's say you have a party and want to keep the guest list private. Maybe you want to keep the guests from knowing who each other are or maybe you want to hide the guest list from the public until the party starts. Midnight allows you to hide this information in plain sight and later verify that information.
 
 The party organizer can hide each participant on the public ledger through hashing capabilities provided by Compact and use those same capabilities to later prove the information under that hash.
 
-Each user could be added to the list by the organizer and the list kept private until the attendees arrive to check-in to the party. After attendees check in, their information can be made public.
+Each user could be added to the list by the organizer and the list kept private until the attendees arrive to check-in to the party. After attendees check in, their information can be made public, likely the paparazzi saw them coming in anyway..
 
 ## Program Design
 
@@ -89,7 +89,7 @@ Set up for Compact code:
 ```bash
 mkdir contracts && cd contracts
 mkdir src && cd src
-touch private-party.compact
+touch private-guest-list.compact
 ```
 
 Open the `.compact` file in your text editor and start with some declarations:
@@ -102,9 +102,9 @@ export enum PartyState {
     READY
 }
 ```
-- line 1 specifies the compatible version of the Compact language.
-- line 2 imports the `CompactStandardLibrary` which provides standard types and circuits for use in Compact programs.
-- lines 4-7 declare a custom data type through `enum` and assign it two avaible values `NOT_READY, READY`.
+- `pragma language_version` specifies the compatible version of the Compact language.
+- We then `import` the `CompactStandardLibrary` which provides standard types and circuits for use in Compact programs.
+- `enum PartyState` declares a custom data type through and assign it two available values `NOT_READY, READY`.
 
 ### Identifier declarations
 
@@ -114,24 +114,23 @@ export ledger organizers: Set<ZswapCoinPublicKey>;
 export ledger hashedPartyGoers: Set<Bytes<32>>;
 export ledger checkedInParty: Set<Bytes<32>>;
 export ledger partyState: PartyState;
-export ledger partiers: Counter;
 export ledger maxListSize: Uint<8>;
 ```
 
 All values with the `ledger` declaration are *public* values. Compact comes with the ability to hide information in these values through hashing and commitment schemes. In particular, we will be hiding the list of party participants in `hashedPartyGoers`.
 
-Organizers will be public information through their public key in the Set of `organizers`, which is represented through the `ZswapCoinPublicKey` type.
+Organizers will be public information through their public key in the Set of `organizers`, which is represented through the `ZswapCoinPublicKey` type. The Set type is useful here because it only allows each value to be present once.
 
 ### Witness function signature
 
-The Compact code will only be aware of the function signature of our witness code. In this way, Compact does not actually need to know the underlying code in the frontend -- we can still enforce correct execution there through our use of `assert()` statements in the backend.
+The Compact code will only be aware of the function signature of our witness code. In this way, Compact does not actually need to know the underlying code in the frontend witness function -- we can still enforce correct execution there through our use of `assert()` statements in the backend.
 
 Add the witness function signature:
 ```compact
-witness localStartParty() : PartyState;
+witness localStartParty(): PartyState;
 ```
 
-We expect the party to start (IRL or "locally") when the guest list is full or the organizer starts the party manually. After the party starts, the function should return the current state of the party.
+We expect the party to start (IRL or "locally") when the guest list is full or the organizer hits the start party button. After the party starts, the function should return the current state of the party from our custom `enum PartyState`.
 
 ### Party Constructor
 
@@ -143,41 +142,40 @@ constructor() {
     maxListSize = 99;
 }
 ```
-- line 19 uses `insert` on the `organizers` Set to add the public key of the caller.
-- line 20 sets the public `partyState` variable to `NOT_READY`.
-- line 21 arbitrarily sets the max guest list size to `99`.
+- First we `insert` on the `organizers` Set to add the public key of the caller.
+- Then the public `partyState` variable is to `NOT_READY`.
+- The max guest list size is set to `99`, arbitrarily.
 
 ### Add Organizer Circuit
 
 The existing organizer may wish to add other organizers to the Set:
 ```compact
-export circuit addOrganizer(newOrganizerPk: ZswapCoinPublicKey): [] {
-    const organizer = ownPublicKey();
-    assert(organizers.member(organizer), "You are not an organizer");
-    assert(!organizers.member(disclose(newOrganizerPk)), "You are already in the organizer list");
+export circuit addOrganizer(newOrganizer: ZswapCoinPublicKey): [] {
+    assert(organizers.member(ownPublicKey()), "You are not an organizer");
+    assert(!organizers.member(disclose(newOrganizer)), "You are already in the organizer list");
     assert(partyState == PartyState.NOT_READY, "The party has already started");
     
-    organizers.insert(disclose(newOrganizerPk));
+    organizers.insert(disclose(newOrganizer));
 }
 ```
-- line 24 is the signature of the circuit `addOrganizer`  
+- The block starts with the signature of the circuit `addOrganizer`  
     - `export` makes this circuit available outside of the contract.
-    - `(newOrganizerPk: ZswapCoinPublicKey)` takes the public key of the organizer to be added to the Set as an input parameter.
+    - `(newOrganizer: ZswapCoinPublicKey)` takes the public key of the organizer to be added to the Set as an input parameter.
     - `[]` denotes that this circuit has no return value.
-- line 25 `ownPublicKey()` grabs the publicKey of the caller and stores it .
-- lines 26-28 are access control checks. These checks verify:
-    - Only an `organizer` can call this function.
+- `ownPublicKey()` returns the public key of the caller and stores it.
+- `assert`s are access control checks. These checks verify:
+    - Only an organizer can call this function.
     - The organizer to be added is not already in the Set.
     - The party has not started yet.
     - Only after these have been verified to be correct, will the new organizer be added to the public `organizers` set.
 
 :::note
-Information passed through parameters to and inside of Compact circuits is *private by default* and not including explicit `disclosure()` when a value may be exposed publicly, will result in a compiler error.
+Information passed through parameters to and inside of Compact circuits is *private by default* and not including explicit `disclose()` when a value may be exposed publicly, will result in a compiler error. 
 :::
 
 ### Add Participant(s)
 
-Now that we have our list of organizers, we need to be able to add them to the ledger. But we know that all ledger information is public, so how do we hide the participants public keys on the ledger without revealing them?
+Now that we have our list of organizers, we need them to be able to add participants to the ledger. But we know that all ledger information is public, so how do we hide the participants public keys on the ledger without revealing them?
 
 The answer is through Compact's `persistentHash`, a SHA-256–based, upgrade-stable hash function that compresses (mostly arbitrary) Compact values into a 32-byte result suitable for deriving persistent on-chain state. Let's implement it:
 ```compact
@@ -185,39 +183,38 @@ circuit commitWithSk(_participantPk: Bytes<32>, _sk: Bytes<32>) : Bytes<32> {
     return disclose(persistentHash<Vector<2, Bytes<32>>>([_participantPk, _sk]));
 }
 ```
-- line 71 is the signature
+- The `circuit` signature:
     - note there is no `export`, so this function is only available to this contract internally.
     - The circuit takes in the public key to be hashed and the secret key of the organizer hashing the information. Remember that circuit inputs are private, so it is safe to pass this information here.
-- line 72 returns the hash after `disclose()`ing it. Attempting to post this hash to the ledger before `disclose()` will result in a compiler error.
+- The circuit then returns the hash after `disclose()`ing it. Attempting to post this hash to the ledger before `disclose()` will result in a compiler error. This is one way that Compact demonstrates privacy by default.
 
-Let's look at the full `addParticipant` circuit:
+That's everything we need for our internal hashing function. Now, let's look at the full `addParticipant` circuit:
 ```compact
 export circuit addParticipant(_participantPk: Bytes<32>, _organizerSk: Bytes<32>): [] {
+    // only organizers can add party goers
     assert(organizers.member(ownPublicKey()), "You are not an organizer");
     assert(partyState == PartyState.NOT_READY, "The party has already started");
-    assert(partiers < maxListSize, "The list is full.");
+    assert(hashedPartyGoers.size() < maxListSize, "The list is full");
 
     const participant = commitWithSk(_participantPk, _organizerSk);
+    assert(!hashedPartyGoers.member(disclose(participant)), "You are already in the list");
     hashedPartyGoers.insert(disclose(participant));
-    partiers.increment(1);
 
-    if (partiers == maxListSize) {
+    if (hashedPartyGoers.size() == maxListSize) {
         const localPartyState = localStartParty();
-        
         // don't trust, verify
         assert(localPartyState == PartyState.READY, "Please start the party, the list is full");
         partyState = PartyState.READY;
     }
 }
 ```
-- lines 35-37 are access control `assert`ions.
-- line 39 calls the `commitWithSk()` circuit and returns the hash of the participant.
-- line 40 inserts that hash into the Set of `hashedPartyGoers`.
-- line 41 increments the counter for number of invited attendees.
-- line 43 checks if the list is full.
-- line 45 calls the witness function `localStartParty()` in the frontend.
-- line 47 `assert`s the correct return from the frontend function. In this way, we can guarantee the frontend function returns what we expect it to.
-- line 48 updates the ledger variable `partyState`.
+- The circuit starts with access control `assert`ions. The location of these assertions is as important as the checks themselves.
+- Then it calls the `commitWithSk()` circuit and returns the hash of the participant.
+- Now we `insert` that hash into the Set of `hashedPartyGoers`, but only after checking that they are not alredy in the list. It is best practice to keep the `commitWithSk` and `disclose()` lines seperate, so as not to potentially leak the private inputs.
+- After adding another private "name" to the list it checks if the list is full.
+- If the list is full, we call the witness function `localStartParty()` in the frontend. we can never trust the execution of logic in a `witness` function, so we don't trust, we verify.
+- `assert` the correct return from the frontend function. In this way, we can guarantee the frontend function returns what we expect it to, without ever knowing the logic in `localStartParty()`
+- Finally it updates the ledger variable `partyState`.
 
 ### Start the party (on-chain)
 
@@ -232,10 +229,10 @@ export circuit chainStartParty(): [] {
     partyState = localPartyState;
 }
 ```
-- lines 62-63 are access control checks.
-- line 65 discloses the return of the frontend `localStartParty()` function.
-- line 66 `assert`s that verifies the return value is correct.
-- line 67 updates the `partyState` ledger variable.
+- The circuit starts with access control checks.
+- Then it `disclose`s the return of the frontend `localStartParty()` function. The return is private by default, so omitting the `disclose` would result in a compiler error.
+- We then add an `assert` that verifies the return value is correct. Don't trust, verify.
+- Finally, update the public `partyState` ledger variable. All ledger values are public.
 
 ### Check-in to the party
 
@@ -244,22 +241,22 @@ Now that the participants have been added and the party has started, the next st
 export circuit checkIn(participantPk: Bytes<32>, _organizerSk: Bytes<32>): [] {
     assert(organizers.member(ownPublicKey()), "You are not an organizer");
     assert(partyState == PartyState.READY, "The party has not started yet");
-    assert(checkedInParty.size() < partiers, "All guests have already checked in");
+    assert(checkedInParty.size() < hashedPartyGoers.size(), "All guests have already checked in");
     assert(hashedPartyGoers.member(commitWithSk(participantPk, _organizerSk)), "You are not on the list");
 
     checkedInParty.insert(disclose(participantPk));
 }
 ```
-- lines 53-55 are access control checks verifying:
+- Access control checks include verifying:
     - The caller is an organizer.
     - Party state is as expected.
     - Not all guests have checked in.
-- line 56 is the interesting line here in that it is how we check previously hashed information. We cannot "unhash" the existing hash, the value under it is hidden forever. What we can do is have the user provide the value again, hash the value again and compare the hashes. When hashing the exact same information, we expect the exact same hash.
-- line 57 provides the `disclose` to let the compiler know that the information is now marked as public and stored in `checkedInParty`.
+- The final assertion here is the interesting line in that it is how we check previously hashed information. We cannot "unhash" the existing hash, the value under it is hidden forever. What we can do is have the user provide the value again, hash the value again and compare the hashes. When hashing the exact same information, we expect the exact same hash, because `persistentHash` is a deterministic function.
+- After verifying this public key is in the list, it provides the `disclose` to let the compiler know that the information is now marked as public and stored in `checkedInParty`. The party has started, so we store the public key directly.
 
-That's all folks, all of the Compact code we need to start our private party contract in about 75 lines. Let's make sure the program compiles, from the `src` directory:
+That's all folks, all of the Compact code we need to start our private party contract in about 70 lines. Let's make sure the program compiles, from the `src` directory:
 ```bash
-compact compile private-party.compact managed/private-party
+compact compile private-guest-list.compact managed/private-guest-list
 ```
 
 Should produce output like this:
@@ -272,7 +269,7 @@ Compiling 4 circuits:
 Overall progress [====================] 4/4
 ```
 :::note
-If compilation was not successful, work with the compiler output to determine where the error may exist in your code. A lot of lessons can be learned by fighting the compiler.
+If compilation was not successful, work with the compiler output to determine where the error may exist in your code. A lot of lessons can be learned by fighting with the compiler.
 :::
 
 After successful compilation, you should see new directories for the compiled contract artifacts:
@@ -288,7 +285,7 @@ contracts/
 └── private-party.compact
 ```
 
-Now that the contract compiles correctly, let's move on to defining the witness functions.
+Now that the contract compiles correctly, let's move on to the definitions of the witness functions.
 
 ## TS config
 
@@ -325,7 +322,7 @@ Populate the config file:
 
 ## Witnesses in the frontend
 
-In our Compact contract, we declared a witness function. As a reminder, the witness function only has a signature declaration in Compact, it is actually defined in the frontend of the DApp, which is why we *don't trust any witness* but we must *verify* information from witnesses. Enough philosophy, let's create our frontend witness file:
+In our Compact contract, we declared a witness function. As a reminder, the witness function only has a signature declaration in Compact, it is actually defined in the frontend of the DApp, which is why we *don't trust any witness* but we must *verify* information from witness functions. Enough philosophy, let's create our frontend witness file:
 ```bash
 cd src
 touch src/witnesses.ts
@@ -333,23 +330,25 @@ touch src/witnesses.ts
 
 Start by creating necessary imports:
 ```ts
-import { Ledger, PartyState } from './managed/private-party/contract/index.js';
+import { Ledger, PartyState } from './managed/private-guest-list/contract/index.js';
 import { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 ```
 
 We should also define a type for all of the data required to be in the private state of the DApp:
 ```ts
 export type PartyPrivateState = {
-    partyState: number;
+    address: string,
+    sk: Uint8Array
 }
 ```
 
-Notice that `partyState` is the only private state variable in our DApp and that it has a different type than it did in Compact. That is because an `enum` type in Compact maps to a `number` in TypeScript, specifically to the index of the selected value in the `enum`. See the complete list of type mappings here(@TODO -- insert link for type mappings)
+The private state of any particular user in our application is simple, it only contains the `address` and the secret key `sk` of a particular party goer.
 
-Next, let's create a helper function for returning on object of the `partyState`:
+Next, let's create a helper function for returning on object of the `PartyPrivateState` type:
 ```ts
-export const createPartyPrivateState = (partyState: number) => ({
-    partyState,
+export const createPartyPrivateState = (address: string, sk: Uint8Array) => ({
+    address,
+    sk
 });
 ```
 
@@ -364,12 +363,12 @@ export const witnesses = {
     ] => [privateState, PartyState.READY],
 };
 ```
-- line 27 is an object to hold all of the witness functions from the contract.
-- line 28 begins the definition of `localStartParty`.
-- line 29 passes `privateState` as a parameter and this *must be included* here for all witness functions.
-- line 30 passes the first parameter our witness function and *must always include* the `WitnessContext<L, PS>`. This can be followed by any other parameters defined by localStartParty in the contract.
-- lines 31-32 are the return types. The witness function must always pass the private state as its first argument.
-- line 33 returns the actual values for the corresponding return types.
+- `const witnesses` is an object to hold all of the witness functions from the contract.
+- `localStartParty` begins the signature of the function.
+- `privateState` is always passed as a parameter and this *must be included* here for all witness functions.
+- The first parameter our witness function *must always include* the `WitnessContext<L, PS>`. This can be followed by any other parameters defined by `localStartParty()` in the contract. This one takes no other input parameters.
+- `PartyPrivateState` and `number` are the return types. The witness function must always return the private state as its first return value.
+- The final line returns the actual values for the corresponding return types.
 
 ## Party Simulator
 
@@ -383,6 +382,7 @@ touch party-simulator.ts
 Open the `party-simulator.ts` file in your VSCode
 
 ### Imports
+
 For now let's just add the necessary imports:
 ```ts
 import {
@@ -392,19 +392,21 @@ import {
     CostModel,
     QueryContext,
     sampleUserAddress,
-    createCircuitContext
+    createCircuitContext,
+    ChargedState,
+    encodeCoinPublicKey
 } from "@midnight-ntwrk/compact-runtime";
 import { 
     Contract,
     type Ledger,
     ledger,
-    PartyState,
- } from "../managed/private-party/contract/index.js";
+ } from "../managed/private-guest-list/contract/index.js";
 import { 
     type PartyPrivateState, 
     witnesses, 
     createPartyPrivateState 
 } from "../witnesses.js";
+import { randomBytes } from './utils.js';
 ```
 
 Now let's write the simulator class.
@@ -434,19 +436,21 @@ export class PartySimulator {
 }
 ```
 
-Now we create the initial state of our contract:
+Now we create the initial state of our contract and some values for Alice:
 ```ts
 export class PartySimulator {
     readonly contract: Contract<PartyPrivateState>;
     contractAddress: string;
     alicePrivateState: PartyPrivateState;
     aliceAddress: string;
+    aliceSk: Uint8Array;
 
     constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
         this.contractAddress = sampleContractAddress();
-        this.alicePrivateState = createPartyPrivateState(PartyState.NOT_READY);
         this.aliceAddress = sampleUserAddress();
+        this.aliceSk = randomBytes(32);
+        this.alicePrivateState = createPartyPrivateState(this.aliceAddress, this.aliceSk);
         const {
             currentPrivateState,
             currentContractState,
@@ -466,17 +470,14 @@ export class PartySimulator {
     alicePrivateState: PartyPrivateState;
     aliceAddress: string;
     circuitContext: CircuitContext<PartyPrivateState>;// new
-    bobAddress: string; // new
-    bobPrivateState: PartyPrivateState;// new
-    bobContext: CircuitContext<PartyPrivateState>;// new
+
 
     constructor() {
         this.contract = new Contract<PartyPrivateState>(witnesses);
         this.contractAddress = sampleContractAddress();
-        this.alicePrivateState = createPartyPrivateState(PartyState.NOT_READY);
+        this.aliceSk = randomBytes(32);
         this.aliceAddress = sampleUserAddress();
-        this.bobAddress = sampleUserAddress();// new
-        this.bobPrivateState = createPartyPrivateState(PartyState.NOT_READY);// new
+        this.alicePrivateState = createPartyPrivateState(this.aliceAddress, this.aliceSk);
         const {
             currentPrivateState,
             currentContractState,
@@ -493,22 +494,16 @@ export class PartySimulator {
                 this.contractAddress,
             )
         };
-        this.bobContext = createCircuitContext(
-            this.contractAddress,
-            this.bobAddress,
-            currentContractState,
-            this.bobPrivateState,
-        );
     }// end of constructor
 ```
 
-Now we need to create functions in our simulator for the circuits in our contract, add this just below the constructor:
+Now we need to create functions in our simulator for calling in to the circuits in our contract, add this just below the constructor:
 ```ts
-// addOrganizer
-    public addOrganizer(newOrganizerPk: Uint8Array): void {
+    // addOrganizer
+    public addOrganizer(newOrganizer: Uint8Array): void {
         this.circuitContext = this.contract.impureCircuits.addOrganizer(
             this.circuitContext,// always pass as first argument
-            { bytes: newOrganizerPk }
+            { bytes: newOrganizer }
         ).context;
     }
     // addParticipant
@@ -522,10 +517,10 @@ Now the solutions:
 ```ts
     }// end of constructor
     // addOrganizer
-    public addOrganizer(newOrganizerPk: Uint8Array): void {
+    public addOrganizer(newOrganizer: Uint8Array): void {
         this.circuitContext = this.contract.impureCircuits.addOrganizer(
             this.circuitContext,
-            { bytes: newOrganizerPk },// transform ZswapPublicCoin -> Bytes<32>
+            { bytes: newOrganizer },// encoded from Uint8Array to Bytes
         ).context;
     }
     // addParticipant
@@ -555,20 +550,78 @@ Now the solutions:
 
 It will also be useful to define some helper functions for use in our tests, add these after your `chainStartParty` function:
 ```ts
-    // helper functions
+    // test helper functions
     public getLedger(): Ledger {
         return ledger(this.circuitContext.currentQueryContext.state);
     }
-    public getPrivateState(): PartyPrivateState {
-        return this.circuitContext.currentPrivateState;
+
+    public getContractState(): ChargedState {
+        return this.circuitContext.currentQueryContext.state;
     }
-    public bobSwitch(): void {
-        this.circuitContext = this.bobContext;
+
+    public switchCallers(callerContext: CircuitContext): void {
+        this.circuitContext = callerContext;
+    }
+
+    public aliceSwitch(contractState: ChargedState): void {
+        this.circuitContext = createCircuitContext(
+            this.contractAddress,
+            this.aliceAddress,
+            contractState,
+            this.alicePrivateState
+        );
     }
 }// end of class
 ```
 
+Now let's define another class for our party goers:
+```ts
+export class WalletBuilder {
+    address: string;
+    encodedAddress: Uint8Array;
+    sk: Uint8Array;
+    privateState: PartyPrivateState;
+    callerContext: CircuitContext<PartyPrivateState>;
+    contractAddress: string;
+
+    constructor(contractAddress: string, contractState: ChargedState) {
+        this.address = sampleUserAddress();
+        this.encodedAddress = encodeCoinPublicKey(this.address);
+        this.sk = randomBytes(32);
+        this.contractAddress = contractAddress;
+        this.privateState = createPartyPrivateState(
+            this.address,
+            this.sk
+        );
+        this.callerContext = createCircuitContext(
+            contractAddress,
+            this.address,
+            contractState,
+            this.privateState
+        );
+    }
+    // use this if the contract state has changed since the creation of the wallet
+    public updateCallerContext(contractState: ChargedState): void {
+        this.callerContext = createCircuitContext(
+            this.contractAddress,
+            this.address,
+            contractState,
+            this.privateState
+        );
+    }
+}
+```
+
 And that is all for Simulator code -- we can now create instances of our party contract quickly and efficiently! Let's finish the setup before moving on to writing tests.
+
+Create `test/utils.ts` and add the helper function for `randomBytes`:
+```
+export const randomBytes = (length: number): Uint8Array => {
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    return bytes;
+}
+```
 
 ### Setup for Tests
 
@@ -615,7 +668,7 @@ Save the file and we'll move on to writing some tests.
 
 ### Test writing party
 
-...or is it a party writing tests? Either way, this is where we'll create many instances of the `private-party` contract and test every interaction possible. 
+...or is it a party writing tests? Either way, this is where we'll create many instances of the `private-guest-list` contract and test every interaction possible. 
 
 First, let's create our test file:
 ```bash
@@ -624,10 +677,12 @@ touch test/party.test.ts
 
 Declare imports:
 ```ts
-import { PartySimulator } from './party-simulator.js';
+import { PartySimulator, WalletBuilder } from './party-simulator.js';
 import { NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { describe, it, expect } from 'vitest';
-import { PartyState } from '../managed/private-party/contract/index.js';
+import { PartyState } from '../managed/private-guest-list/contract/index.js';
+import { randomBytes } from './utils.js';
+import { sampleUserAddress, encodeCoinPublicKey} from '@midnight-ntwrk/compact-runtime';
 ```
 
 Set the network Id to "undeployed":
@@ -663,4 +718,4 @@ it ("adds an organizer", () => {});
 
 Make sure to write as many tests as you can think of!
 
-After writing tests of your own, you can view the full repository for this tutorial here: [replace this link to `example-private-party` repo](https://github.com/nstanford5/example-private-party)
+After writing tests of your own, you can view the full repository for this tutorial here: [replace this link to `example-private-guest-list` repo](https://github.com/nstanford5/example-private-party)

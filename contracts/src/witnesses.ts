@@ -3,8 +3,8 @@ import { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 
 // type declaration
 export type PartyPrivateState = {
-    address: string,
-    sk: Uint8Array
+        address: string,
+        sk: Uint8Array
 }
 
 // helper function for making an object of the PrivatePartyState type
