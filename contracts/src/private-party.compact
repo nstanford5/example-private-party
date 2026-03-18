@@ -12,7 +12,7 @@ export ledger checkedInParty: Set<Bytes<32>>;
 export ledger partyState: PartyState;
 export ledger maxListSize: Uint<8>;
 
-witness localStartParty() : PartyState;
+witness localStartParty(): PartyState;
 
 constructor(){
     // the publicKey of the caller of this function
@@ -42,8 +42,7 @@ export circuit addParticipant(_participantPk: Bytes<32>, _organizerSk: Bytes<32>
     if (hashedPartyGoers.size() == maxListSize) {
         const localPartyState = localStartParty();
         // don't trust, verify
-        assert(localPartyState == PartyState.READY, 
-            "Please start the party, the list is full");
+        assert(localPartyState == PartyState.READY, "Please start the party, the list is full");
         partyState = PartyState.READY;
     }
 }
@@ -66,6 +65,6 @@ export circuit chainStartParty(): [] {
     partyState = localPartyState;
 }
 
-circuit commitWithSk(_participantPk: Bytes<32>, _sk: Bytes<32>) : Bytes<32> {
+circuit commitWithSk(_participantPk: Bytes<32>, _sk: Bytes<32>): Bytes<32> {
     return disclose(persistentHash<Vector<2, Bytes<32>>>([_participantPk, _sk]));
 }

@@ -58,7 +58,7 @@ export class PartySimulator {
     public addOrganizer(newOrganizerPk: Uint8Array): void {
         this.circuitContext = this.contract.impureCircuits.addOrganizer(
             this.circuitContext,
-            { bytes: newOrganizerPk },
+            { bytes: newOrganizerPk },// encoded from Uint8Array to Bytes
         ).context;
     }
 
