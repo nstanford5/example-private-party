@@ -48,14 +48,14 @@ Compact provides many useful capabilities to support our private party. This sec
 
 Create the project root folder and `package.json`:
 ```bash
-mkdir example-private-party && cd example-private-party
+mkdir example-private-guest-list && cd example-private-guest-list
 touch package.json 
 ```
 
 Add the following to `package.json`:
 ```json
 {
-  "name": "example-private-party",
+  "name": "example-private-guest-list",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -73,7 +73,7 @@ Add the following to `package.json`:
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.14.0",
+    "@midnight-ntwrk/compact-runtime": "0.15.0",
     "@midnight-ntwrk/midnight-js-network-id": "3.1.0",
     "@midnight-ntwrk/compact-js": "2.4.0"
   }
@@ -94,7 +94,7 @@ touch private-guest-list.compact
 
 Open the `.compact` file in your text editor and start with some declarations:
 ```compact
-pragma language_version 0.21;
+pragma language_version 0.22;
 import CompactStandardLibrary;
 
 export enum PartyState {

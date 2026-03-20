@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.14.0');
+__compactRuntime.checkRuntimeVersion('0.15.0');
 
 export var PartyState;
 (function (PartyState) {
@@ -177,21 +177,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (as invoked from Typescript)',
-                                     'private-party.compact line 51 char 1',
+                                     'private-party.compact line 50 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(participantPk_0.buffer instanceof ArrayBuffer && participantPk_0.BYTES_PER_ELEMENT === 1 && participantPk_0.length === 32)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'private-party.compact line 51 char 1',
+                                     'private-party.compact line 50 char 1',
                                      'Bytes<32>',
                                      participantPk_0)
         }
         if (!(_organizerSk_0.buffer instanceof ArrayBuffer && _organizerSk_0.BYTES_PER_ELEMENT === 1 && _organizerSk_0.length === 32)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'private-party.compact line 51 char 1',
+                                     'private-party.compact line 50 char 1',
                                      'Bytes<32>',
                                      _organizerSk_0)
         }
@@ -220,7 +220,7 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('chainStartParty',
                                      'argument 1 (as invoked from Typescript)',
-                                     'private-party.compact line 60 char 1',
+                                     'private-party.compact line 59 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
@@ -237,6 +237,12 @@ export class Contract {
       }
     };
     this.impureCircuits = {
+      addOrganizer: this.circuits.addOrganizer,
+      addParticipant: this.circuits.addParticipant,
+      checkIn: this.circuits.checkIn,
+      chainStartParty: this.circuits.chainStartParty
+    };
+    this.provableCircuits = {
       addOrganizer: this.circuits.addOrganizer,
       addParticipant: this.circuits.addParticipant,
       checkIn: this.circuits.checkIn,
@@ -514,32 +520,34 @@ export class Contract {
                             ===
                             0,
                             'The party has already started');
-    __compactRuntime.assert(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                      partialProofData,
-                                                                                      [
-                                                                                       { dup: { n: 0 } },
-                                                                                       { idx: { cached: false,
-                                                                                                pushPath: false,
-                                                                                                path: [
-                                                                                                       { tag: 'value',
-                                                                                                         value: { value: _descriptor_5.toValue(1n),
-                                                                                                                  alignment: _descriptor_5.alignment() } }] } },
-                                                                                       'size',
-                                                                                       { popeq: { cached: true,
-                                                                                                  result: undefined } }]).value)
-                            <
-                            _descriptor_5.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                      partialProofData,
-                                                                                      [
-                                                                                       { dup: { n: 0 } },
-                                                                                       { idx: { cached: false,
-                                                                                                pushPath: false,
-                                                                                                path: [
-                                                                                                       { tag: 'value',
-                                                                                                         value: { value: _descriptor_5.toValue(4n),
-                                                                                                                  alignment: _descriptor_5.alignment() } }] } },
-                                                                                       { popeq: { cached: false,
-                                                                                                  result: undefined } }]).value),
+    let t_0;
+    __compactRuntime.assert((t_0 = _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                             partialProofData,
+                                                                                             [
+                                                                                              { dup: { n: 0 } },
+                                                                                              { idx: { cached: false,
+                                                                                                       pushPath: false,
+                                                                                                       path: [
+                                                                                                              { tag: 'value',
+                                                                                                                value: { value: _descriptor_5.toValue(1n),
+                                                                                                                         alignment: _descriptor_5.alignment() } }] } },
+                                                                                              'size',
+                                                                                              { popeq: { cached: true,
+                                                                                                         result: undefined } }]).value),
+                             t_0
+                             <
+                             _descriptor_5.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                       partialProofData,
+                                                                                       [
+                                                                                        { dup: { n: 0 } },
+                                                                                        { idx: { cached: false,
+                                                                                                 pushPath: false,
+                                                                                                 path: [
+                                                                                                        { tag: 'value',
+                                                                                                          value: { value: _descriptor_5.toValue(4n),
+                                                                                                                   alignment: _descriptor_5.alignment() } }] } },
+                                                                                        { popeq: { cached: false,
+                                                                                                   result: undefined } }]).value)),
                             'The list is full');
     const participant_0 = this._commitWithSk_0(_participantPk_0, _organizerSk_0);
     __compactRuntime.assert(!_descriptor_2.fromValue(__compactRuntime.queryLedgerState(context,
@@ -654,33 +662,35 @@ export class Contract {
                             ===
                             1,
                             'The party has not started yet');
-    __compactRuntime.assert(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                      partialProofData,
-                                                                                      [
-                                                                                       { dup: { n: 0 } },
-                                                                                       { idx: { cached: false,
-                                                                                                pushPath: false,
-                                                                                                path: [
-                                                                                                       { tag: 'value',
-                                                                                                         value: { value: _descriptor_5.toValue(2n),
-                                                                                                                  alignment: _descriptor_5.alignment() } }] } },
-                                                                                       'size',
-                                                                                       { popeq: { cached: true,
-                                                                                                  result: undefined } }]).value)
-                            <
-                            _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                      partialProofData,
-                                                                                      [
-                                                                                       { dup: { n: 0 } },
-                                                                                       { idx: { cached: false,
-                                                                                                pushPath: false,
-                                                                                                path: [
-                                                                                                       { tag: 'value',
-                                                                                                         value: { value: _descriptor_5.toValue(1n),
-                                                                                                                  alignment: _descriptor_5.alignment() } }] } },
-                                                                                       'size',
-                                                                                       { popeq: { cached: true,
-                                                                                                  result: undefined } }]).value),
+    let t_0;
+    __compactRuntime.assert((t_0 = _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                             partialProofData,
+                                                                                             [
+                                                                                              { dup: { n: 0 } },
+                                                                                              { idx: { cached: false,
+                                                                                                       pushPath: false,
+                                                                                                       path: [
+                                                                                                              { tag: 'value',
+                                                                                                                value: { value: _descriptor_5.toValue(2n),
+                                                                                                                         alignment: _descriptor_5.alignment() } }] } },
+                                                                                              'size',
+                                                                                              { popeq: { cached: true,
+                                                                                                         result: undefined } }]).value),
+                             t_0
+                             <
+                             _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                       partialProofData,
+                                                                                       [
+                                                                                        { dup: { n: 0 } },
+                                                                                        { idx: { cached: false,
+                                                                                                 pushPath: false,
+                                                                                                 path: [
+                                                                                                        { tag: 'value',
+                                                                                                          value: { value: _descriptor_5.toValue(1n),
+                                                                                                                   alignment: _descriptor_5.alignment() } }] } },
+                                                                                        'size',
+                                                                                        { popeq: { cached: true,
+                                                                                                   result: undefined } }]).value)),
                             'All guests have already checked in');
     let tmp_1;
     __compactRuntime.assert((tmp_1 = this._commitWithSk_0(participantPk_0,
