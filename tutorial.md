@@ -21,7 +21,7 @@ Let's say you have a party and want to keep the guest list private. Maybe you wa
 
 The party organizer can hide each participant on the public ledger through hashing capabilities provided by Compact and use those same capabilities to later prove the information under that hash.
 
-Each user could be added to the list by the organizer and the list kept private until the attendees arrive to check-in to the party. After attendees check in, their information can be made public, likely the paparazzi saw them coming in anyway..
+Each user could be added to the list by the organizer and the list kept private until the attendees arrive to check-in to the party. After attendees check in, their information can be made public. It's likely the paparazzi saw them coming in anyway..
 
 ## Program Design
 
@@ -38,7 +38,7 @@ These program actions will map to (in no particular order):
 - TypeScript Witness functions
 - Public Ledger operations
 - Private state variables
-- Hashing functions and later verification of the data
+- Hashing functions  
 
 ## Compact Tutorial
 
