@@ -29,6 +29,7 @@ const LOCAL_DEV_SEED =
   '0000000000000000000000000000000000000000000000000000000000000001';
 
 const PRIVATE_STATE_ID = 'PartyPrivateState';
+const BOB_PRIVATE_STATE_ID = 'BobPartyPrivateState';
 
 const logger = pino({
     level: process.env['LOG_LEVEL'] ?? 'info',
@@ -40,6 +41,7 @@ describe('Raffle Smart Contract via midnight-js', () => {
     let bobWallet: MidnightWalletProvider;
     let providers: PartyProviders;
     let contractAddress: ContractAddress;
+    let bobProviders: PartyProviders;
 
     const config = getConfig();
     const seed = LOCAL_DEV_SEED;
@@ -67,10 +69,13 @@ describe('Raffle Smart Contract via midnight-js', () => {
 
         bobWallet = await MidnightWalletProvider.build(logger, envConfig, seed2!);
         await bobWallet.start();
-        await syncWallet(logger, wallet.wallet, 600_000);
+        await syncWallet(logger, bobWallet.wallet, 600_000);
 
         providers = buildProviders(wallet, zkConfigPath, config);
         logger.info('Providers initialized. Ready to test.');
+
+        bobProviders = buildProviders(bobWallet, zkConfigPath, config);
+        logger.info(`Bob providers successfully initialized`);
     });
 
     afterAll(async () => {
@@ -83,7 +88,7 @@ describe('Raffle Smart Contract via midnight-js', () => {
     it('Runs the contract', async () => {
         const aliceAddress = sampleUserAddress();
         const initialPrivateState = createPartyPrivateState(aliceAddress, randomBytes(32));
-
+        const bobPrivateState = createPartyPrivateState(sampleUserAddress(), randomBytes(32));
         // Step 1: Local circuit execution
         const unprovenData: any = await (createUnprovenDeployTx as any)(providers, {
             compiledContract: CompiledPartyContract,
@@ -106,6 +111,7 @@ describe('Raffle Smart Contract via midnight-js', () => {
         const txId = await providers.midnightProvider.submitTx(balancedTx);
         logger.info(`Submitted tx id: ${txId}`);
 
+        // contract deployed and txn finalized
         const finalizedTxData = await providers.publicDataProvider.watchForTxData(txId);
         logger.info(`Finalized! Status: ${finalizedTxData.status}, block: ${finalizedTxData.blockHeight}`);
     
@@ -119,6 +125,10 @@ describe('Raffle Smart Contract via midnight-js', () => {
         expect(contractAddress).toBeDefined();
         expect(contractAddress.length).toBeGreaterThan(0);
 
+        // bob stuff
+        bobProviders.privateStateProvider.setContractAddress(pendingAddress)
+        await bobProviders.privateStateProvider.set(BOB_PRIVATE_STATE_ID, bobPrivateState);
+
         // verify initial ledger state (constructor execution)
         const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
         expect(contractState).not.toBeNull();
@@ -127,14 +137,14 @@ describe('Raffle Smart Contract via midnight-js', () => {
         expect(state.partyState).toEqual(PartyState.NOT_READY);
         logger.info(`Initial State: maxListSize: ${state.maxListSize}, partyState: ${state.partyState}`);
 
-        // How do we get the coin of the caller?
+        // How do we get the CoinPublicKey of the caller?
         logger.info(`Verifying the CoinPublicKey of the caller has been stored on chain...`);
         const callerCoinPublicKey: CoinPublicKey = providers.walletProvider.getCoinPublicKey();
         const encoded = encodeCoinPublicKey(callerCoinPublicKey);
         expect(state.organizers.member({bytes: encoded})).toBeTruthy();
         logger.info(`CoinPublicKey of the organizer: ${callerCoinPublicKey}`);
 
-        // need to have type signatures right in the args because the errors are bad
+        // need to have type signatures correct in the args because the errors are bad
         logger.info(`Adding an organizer...`);
         const newOrganizerEncoded = encodeCoinPublicKey(bobWallet.getCoinPublicKey());
         const txData1: any = await (submitCallTx as any)(providers, {
@@ -217,28 +227,25 @@ describe('Raffle Smart Contract via midnight-js', () => {
         expect(firstFinal.checkedInParty.member(partier1)).toBeTruthy();
         logger.info(`Participant checked in! ID can now be revealed, partier1: ${partier1}`);
 
+        // Now test calling from a different perspective
+        // How?
+        // 1. Providers -- pass in a new provider object that is set to the new user,
+        // with new PRIVATE_STATE_ID, same contract address and compiled contract
+        // it seems like a wrapper could be implemented here?
+        logger.info(`Attempting to check in a user as Bob...`);
+        // maybe fails? Definitely doesn't complete
+        expect(async () => {
+            const txData6: any = await (submitCallTx as any)(bobProviders, {
+            compiledContract: CompiledPartyContract,
+            contractAddress,
+            privateStateId: BOB_PRIVATE_STATE_ID,
+            circuitId: 'checkIn',
+            args: [partier2, organizerSk]// circuit params
+            });
+        }).toThrow();
+        // expect(txData6).toBeUndefined();
+
     });// end of test case 'deploys contract'
-    // it('adds an organizer', async () => {
-    //     expect(contractAddress).toBeDefined();
-
-    //     // build txData
-    //     const address = sampleUserAddress();
-    //     const newOrganizer = encodeCoinPublicKey(address);
-    //     const txData: any = await (submitCallTx as any)(providers, {
-    //         compiledContract: CompiledPartyContract,
-    //         contractAddress,
-    //         privateStateId: PRIVATE_STATE_ID,
-    //         circuitId: 'addOrganizer',
-    //         args: [newOrganizer]
-    //     });
-
-    //     logger.info(`post() tx hash: ${txData.public.txHash}`);
-    //     logger.info(`post() block height: ${txData.public.blockHeight}`);
-    //     logger.info(`post() status: ${txData.public.status}`);
-
-    //     // verify
-    //     const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
-    //     expect(contractState).not.toBeNull();
-    //     //const state = ledger(contractState!.data);
-    // });
+    it('adds an organizer', async () => {
+    });
 })
