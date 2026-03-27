@@ -21,7 +21,7 @@ export function buildProviders(
   return {
     privateStateProvider: levelPrivateStateProvider({
       privateStateStoreName: `raffle-${Date.now()}`,
-      // must have 3 (upper case, special chars)
+      // Has password rules! must have 3 (upper case, special chars)
       privateStoragePasswordProvider: () => 'Party-test-password',
       accountId: wallet.getCoinPublicKey(),
     }),

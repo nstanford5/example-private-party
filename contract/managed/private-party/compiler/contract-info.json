@@ -9,19 +9,10 @@
       "proof": true,
       "arguments": [
         {
-          "name": "newOrganizer",
+          "name": "_organizerSk",
           "type": {
-            "type-name": "Struct",
-            "name": "ZswapCoinPublicKey",
-            "elements": [
-              {
-                "name": "bytes",
-                "type": {
-                  "type-name": "Bytes",
-                  "length": 32
-                }
-              }
-            ]
+            "type-name": "Bytes",
+            "length": 32
           }
         }
       ],
@@ -38,13 +29,6 @@
       "arguments": [
         {
           "name": "_participantPk",
-          "type": {
-            "type-name": "Bytes",
-            "length": 32
-          }
-        },
-        {
-          "name": "_organizerSk",
           "type": {
             "type-name": "Bytes",
             "length": 32
@@ -68,13 +52,6 @@
             "type-name": "Bytes",
             "length": 32
           }
-        },
-        {
-          "name": "_organizerSk",
-          "type": {
-            "type-name": "Bytes",
-            "length": 32
-          }
         }
       ],
       "result-type": {
@@ -94,6 +71,24 @@
         "types": [
         ]
       }
+    },
+    {
+      "name": "publicKey",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "_sk",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
     }
   ],
   "witnesses": [
@@ -108,6 +103,15 @@
           "NOT_READY",
           "READY"
         ]
+      }
+    },
+    {
+      "name": "localSk",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
       }
     }
   ],
