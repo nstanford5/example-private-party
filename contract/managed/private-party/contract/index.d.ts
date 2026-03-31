@@ -28,7 +28,6 @@ export type ProvableCircuits<PS> = {
 }
 
 export type PureCircuits = {
-  publicKey(_sk_0: Uint8Array): Uint8Array;
 }
 
 export type Circuits<PS> = {
@@ -39,7 +38,6 @@ export type Circuits<PS> = {
   checkIn(context: __compactRuntime.CircuitContext<PS>,
           participantPk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   chainStartParty(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
-  publicKey(context: __compactRuntime.CircuitContext<PS>, _sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
 }
 
 export type Ledger = {
@@ -75,7 +73,8 @@ export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>>
   impureCircuits: ImpureCircuits<PS>;
   provableCircuits: ProvableCircuits<PS>;
   constructor(witnesses: W);
-  initialState(context: __compactRuntime.ConstructorContext<PS>): __compactRuntime.ConstructorResult<PS>;
+  initialState(context: __compactRuntime.ConstructorContext<PS>,
+               partySize_0: bigint): __compactRuntime.ConstructorResult<PS>;
 }
 
 export declare function ledger(state: __compactRuntime.StateValue | __compactRuntime.ChargedState): Ledger;

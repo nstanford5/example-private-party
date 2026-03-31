@@ -82,14 +82,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('addOrganizer',
                                      'argument 1 (as invoked from Typescript)',
-                                     'private-party.compact line 26 char 1',
+                                     'private-party.compact line 27 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(_organizerSk_0.buffer instanceof ArrayBuffer && _organizerSk_0.BYTES_PER_ELEMENT === 1 && _organizerSk_0.length === 32)) {
           __compactRuntime.typeError('addOrganizer',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'private-party.compact line 26 char 1',
+                                     'private-party.compact line 27 char 1',
                                      'Bytes<32>',
                                      _organizerSk_0)
         }
@@ -118,14 +118,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('addParticipant',
                                      'argument 1 (as invoked from Typescript)',
-                                     'private-party.compact line 37 char 1',
+                                     'private-party.compact line 39 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(_participantPk_0.buffer instanceof ArrayBuffer && _participantPk_0.BYTES_PER_ELEMENT === 1 && _participantPk_0.length === 32)) {
           __compactRuntime.typeError('addParticipant',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'private-party.compact line 37 char 1',
+                                     'private-party.compact line 39 char 1',
                                      'Bytes<32>',
                                      _participantPk_0)
         }
@@ -154,14 +154,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (as invoked from Typescript)',
-                                     'private-party.compact line 57 char 1',
+                                     'private-party.compact line 60 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(participantPk_0.buffer instanceof ArrayBuffer && participantPk_0.BYTES_PER_ELEMENT === 1 && participantPk_0.length === 32)) {
           __compactRuntime.typeError('checkIn',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'private-party.compact line 57 char 1',
+                                     'private-party.compact line 60 char 1',
                                      'Bytes<32>',
                                      participantPk_0)
         }
@@ -189,7 +189,7 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('chainStartParty',
                                      'argument 1 (as invoked from Typescript)',
-                                     'private-party.compact line 68 char 1',
+                                     'private-party.compact line 72 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
@@ -203,9 +203,6 @@ export class Contract {
         const result_0 = this._chainStartParty_0(context, partialProofData);
         partialProofData.output = { value: [], alignment: [] };
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
-      },
-      publicKey(context, ...args_1) {
-        return { result: pureCircuits.publicKey(...args_1), context };
       }
     };
     this.impureCircuits = {
@@ -222,10 +219,11 @@ export class Contract {
     };
   }
   initialState(...args_0) {
-    if (args_0.length !== 1) {
-      throw new __compactRuntime.CompactError(`Contract state constructor: expected 1 argument (as invoked from Typescript), received ${args_0.length}`);
+    if (args_0.length !== 2) {
+      throw new __compactRuntime.CompactError(`Contract state constructor: expected 2 arguments (as invoked from Typescript), received ${args_0.length}`);
     }
     const constructorContext_0 = args_0[0];
+    const partySize_0 = args_0[1];
     if (typeof(constructorContext_0) !== 'object') {
       throw new __compactRuntime.CompactError(`Contract state constructor: expected 'constructorContext' in argument 1 (as invoked from Typescript) to be an object`);
     }
@@ -237,6 +235,13 @@ export class Contract {
     }
     if (typeof(constructorContext_0.initialZswapLocalState) !== 'object') {
       throw new __compactRuntime.CompactError(`Contract state constructor: expected 'initialZswapLocalState' in argument 1 (as invoked from Typescript) to be an object`);
+    }
+    if (!(typeof(partySize_0) === 'bigint' && partySize_0 >= 0n && partySize_0 <= 255n)) {
+      __compactRuntime.typeError('Contract state constructor',
+                                 'argument 1 (argument 2 as invoked from Typescript)',
+                                 'private-party.compact line 18 char 1',
+                                 'Uint<0..256>',
+                                 partySize_0)
     }
     const state_0 = new __compactRuntime.ContractState();
     let stateValue_0 = __compactRuntime.StateValue.newArray();
@@ -311,7 +316,7 @@ export class Contract {
                                                                                               alignment: _descriptor_4.alignment() }).encode() } },
                                        { ins: { cached: false, n: 1 } }]);
     const _sk_0 = this._localSk_0(context, partialProofData);
-    const pubKey_0 = this._publicKey_0(_sk_0);
+    const pubKey_0 = this._getDappPublicKey_0(_sk_0);
     __compactRuntime.queryLedgerState(context,
                                       partialProofData,
                                       [
@@ -338,7 +343,6 @@ export class Contract {
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(0),
                                                                                               alignment: _descriptor_3.alignment() }).encode() } },
                                        { ins: { cached: false, n: 1 } }]);
-    const tmp_0 = 99n;
     __compactRuntime.queryLedgerState(context,
                                       partialProofData,
                                       [
@@ -346,7 +350,7 @@ export class Contract {
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_4.toValue(4n),
                                                                                               alignment: _descriptor_4.alignment() }).encode() } },
                                        { push: { storage: true,
-                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_4.toValue(tmp_0),
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_4.toValue(partySize_0),
                                                                                               alignment: _descriptor_4.alignment() }).encode() } },
                                        { ins: { cached: false, n: 1 } }]);
     state_0.data = new __compactRuntime.ChargedState(context.currentQueryContext.state.state);
@@ -396,7 +400,7 @@ export class Contract {
   }
   _addOrganizer_0(context, partialProofData, _organizerSk_0) {
     const _sk_0 = this._localSk_0(context, partialProofData);
-    const pubKey_0 = this._publicKey_0(_sk_0);
+    const pubKey_0 = this._getDappPublicKey_0(_sk_0);
     __compactRuntime.assert(_descriptor_2.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                       partialProofData,
                                                                                       [
@@ -414,7 +418,7 @@ export class Contract {
                                                                                        { popeq: { cached: true,
                                                                                                   result: undefined } }]).value),
                             'You are not an organizer');
-    const newOrgPubKey_0 = this._publicKey_0(_organizerSk_0);
+    const newOrgPubKey_0 = this._getDappPublicKey_0(_organizerSk_0);
     __compactRuntime.assert(!_descriptor_2.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                        partialProofData,
                                                                                        [
@@ -467,7 +471,7 @@ export class Contract {
   }
   _addParticipant_0(context, partialProofData, _participantPk_0) {
     const _sk_0 = this._localSk_0(context, partialProofData);
-    const pubKey_0 = this._publicKey_0(_sk_0);
+    const pubKey_0 = this._getDappPublicKey_0(_sk_0);
     __compactRuntime.assert(_descriptor_2.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                       partialProofData,
                                                                                       [
@@ -608,7 +612,7 @@ export class Contract {
   }
   _checkIn_0(context, partialProofData, participantPk_0) {
     const _sk_0 = this._localSk_0(context, partialProofData);
-    const pubKey_0 = this._publicKey_0(_sk_0);
+    const pubKey_0 = this._getDappPublicKey_0(_sk_0);
     __compactRuntime.assert(_descriptor_2.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                       partialProofData,
                                                                                       [
@@ -710,7 +714,7 @@ export class Contract {
   }
   _chainStartParty_0(context, partialProofData) {
     const _sk_0 = this._localSk_0(context, partialProofData);
-    const pubKey_0 = this._publicKey_0(_sk_0);
+    const pubKey_0 = this._getDappPublicKey_0(_sk_0);
     __compactRuntime.assert(_descriptor_2.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                       partialProofData,
                                                                                       [
@@ -759,9 +763,10 @@ export class Contract {
     return [];
   }
   _commitWithSk_0(_participantPk_0, _sk_0) {
-    return this._persistentHash_0([_participantPk_0, _sk_0]);
+    const hash_0 = this._persistentHash_0([_participantPk_0, _sk_0]);
+    return hash_0;
   }
-  _publicKey_0(_sk_0) {
+  _getDappPublicKey_0(_sk_0) {
     return this._persistentHash_0([new Uint8Array([103, 117, 101, 115, 116, 45, 108, 105, 115, 116, 58, 112, 107, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
                                    _sk_0]);
   }
@@ -1054,22 +1059,7 @@ const _emptyContext = {
 const _dummyContract = new Contract({
   localStartParty: (...args) => undefined, localSk: (...args) => undefined
 });
-export const pureCircuits = {
-  publicKey: (...args_0) => {
-    if (args_0.length !== 1) {
-      throw new __compactRuntime.CompactError(`publicKey: expected 1 argument (as invoked from Typescript), received ${args_0.length}`);
-    }
-    const _sk_0 = args_0[0];
-    if (!(_sk_0.buffer instanceof ArrayBuffer && _sk_0.BYTES_PER_ELEMENT === 1 && _sk_0.length === 32)) {
-      __compactRuntime.typeError('publicKey',
-                                 'argument 1',
-                                 'private-party.compact line 84 char 1',
-                                 'Bytes<32>',
-                                 _sk_0)
-    }
-    return _dummyContract._publicKey_0(_sk_0);
-  }
-};
+export const pureCircuits = {};
 export const contractReferenceLocations =
   { tag: 'publicLedgerArray', indices: { } };
 //# sourceMappingURL=index.js.map

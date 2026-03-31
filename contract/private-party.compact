@@ -1,4 +1,4 @@
-pragma language_version 0.22;
+pragma language_version >= 0.22;
 import CompactStandardLibrary;
 
 export enum PartyState {
@@ -15,21 +15,21 @@ export sealed ledger maxListSize: Uint<8>;
 witness localStartParty(): PartyState;
 witness localSk(): Bytes<32>;
 
-constructor(){
+constructor(partySize: Uint<8>){
     const _sk = localSk();
-    const pubKey = publicKey(_sk);
+    const pubKey = getDappPublicKey(_sk);
     organizers.insert(disclose(pubKey));
 
     partyState = PartyState.NOT_READY;
-    maxListSize = 99;
+    maxListSize = disclose(partySize);
 }
 
 export circuit addOrganizer(_organizerSk: Bytes<32>): [] {
     const _sk = localSk();
-    const pubKey = publicKey(_sk);
+    const pubKey = getDappPublicKey(_sk);
     assert(organizers.member(disclose(pubKey)), "You are not an organizer");
 
-    const newOrgPubKey = publicKey(_organizerSk);
+    const newOrgPubKey = getDappPublicKey(_organizerSk);
     assert(!organizers.member(disclose(newOrgPubKey)), "You are already in the organizer list");
     assert(partyState == PartyState.NOT_READY, "The party has already started");
     
@@ -39,7 +39,7 @@ export circuit addOrganizer(_organizerSk: Bytes<32>): [] {
 export circuit addParticipant(_participantPk: Bytes<32>): [] {
     // only organizers can add party goers
     const _sk = localSk();
-    const pubKey = publicKey(_sk);
+    const pubKey = getDappPublicKey(_sk);
     assert(organizers.member(disclose(pubKey)), "You are not an organizer");
 
     assert(partyState == PartyState.NOT_READY, "The party has already started");
@@ -59,7 +59,7 @@ export circuit addParticipant(_participantPk: Bytes<32>): [] {
 
 export circuit checkIn(participantPk: Bytes<32>): [] {
     const _sk = localSk();
-    const pubKey = publicKey(_sk);
+    const pubKey = getDappPublicKey(_sk);
     assert(organizers.member(disclose(pubKey)), "You are not an organizer");
 
     assert(partyState == PartyState.READY, "The party has not started yet");
@@ -71,7 +71,7 @@ export circuit checkIn(participantPk: Bytes<32>): [] {
 
 export circuit chainStartParty(): [] {
     const _sk = localSk();
-    const pubKey = publicKey(_sk);
+    const pubKey = getDappPublicKey(_sk);
     assert(organizers.member(disclose(pubKey)), "Only organizers can start the party");
     
     assert(partyState == PartyState.NOT_READY, "The party has already started");
@@ -82,10 +82,11 @@ export circuit chainStartParty(): [] {
 }
 
 circuit commitWithSk(_participantPk: Bytes<32>, _sk: Bytes<32>): Bytes<32> {
-    return disclose(persistentHash<Vector<2, Bytes<32>>>([_participantPk, _sk]));
+    const hash = persistentHash<Vector<2, Bytes<32>>>([_participantPk, _sk]);
+    return disclose(hash);
 }
 
 // hash a publicKey specific to this DApp so that users cannot be tracked
-export circuit publicKey(_sk: Bytes<32>): Bytes<32> {
+circuit getDappPublicKey(_sk: Bytes<32>): Bytes<32> {
     return persistentHash<Vector<2, Bytes<32>>>([pad(32, "guest-list:pk:"), _sk]);
 }

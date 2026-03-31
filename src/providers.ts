@@ -7,7 +7,6 @@ import { type MidnightWalletProvider } from './wallet.js';
 import { type NetworkConfig } from './config.js';
 
 export type PartyCircuits = 'addOrganizer' | 'addParticipant' | 'checkIn' | 'chainStartParty';
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type PartyProviders = MidnightProviders<any>;
 

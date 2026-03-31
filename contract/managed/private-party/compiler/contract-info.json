@@ -71,24 +71,6 @@
         "types": [
         ]
       }
-    },
-    {
-      "name": "publicKey",
-      "pure": true,
-      "proof": false,
-      "arguments": [
-        {
-          "name": "_sk",
-          "type": {
-            "type-name": "Bytes",
-            "length": 32
-          }
-        }
-      ],
-      "result-type": {
-        "type-name": "Bytes",
-        "length": 32
-      }
     }
   ],
   "witnesses": [

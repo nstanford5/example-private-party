@@ -11,32 +11,8 @@ export {
     type ImpureCircuits,
     type PureCircuits,
 } from './managed/private-party/contract/index.js';
-
-import { PartyState } from './managed/private-party/contract/index.js';
-
-import { Contract, type Witnesses, type Ledger } from './managed/private-party/contract/index.js';
-import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
-
-export type PartyPrivateState = {
-    address: string,
-    sk: Uint8Array,
-}
-
-export const createPartyPrivateState = (address: string, sk: Uint8Array) => ({
-    address,
-    sk
-});
-
-export const witnesses = {
-    localStartParty: ({
-        privateState
-    }: WitnessContext<Ledger, PartyPrivateState>): [
-        PartyPrivateState,
-        number
-    ] => {
-        return [privateState, PartyState.READY];
-    }
-};
+import { witnesses } from './witnesses.js';
+import { Contract } from './managed/private-party/contract/index.js';
 
 const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 export const zkConfigPath = path.resolve(currentDir, 'managed', 'private-party');
