@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
     createUnprovenDeployTx,
-    deployContract,// @TODO -- show the "easy way" to deployContract
+    deployContract,
     submitCallTx,
 } from '@midnight-ntwrk/midnight-js-contracts';
 import type { ContractAddress } from '@midnight-ntwrk/compact-runtime';
@@ -21,9 +21,6 @@ import {
 } from '../../contract/index.js';
 import { createPartyPrivateState } from '../../contract/witnesses.js'
 import type { EnvironmentConfiguration } from '@midnight-ntwrk/testkit-js';
-import { toHex } from '@midnight-ntwrk/midnight-js-utils';
-
-// Genesis seed for local dev node — pre-funded with tokens
 
 const logger = pino({
     level: process.env['LOG_LEVEL'] ?? 'info',
@@ -41,6 +38,7 @@ describe('Raffle Smart Contract via midnight-js', () => {
 
 
     const config = getConfig();
+    // Genesis seed(s) for local dev node — pre-funded with tokens, up to 3
     const seed1 ='0000000000000000000000000000000000000000000000000000000000000001';
     const seed2 = '0000000000000000000000000000000000000000000000000000000000000002';
     const seed3 = '0000000000000000000000000000000000000000000000000000000000000003';
