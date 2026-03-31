@@ -306,4 +306,22 @@ describe('Raffle Smart Contract via midnight-js', () => {
         expect(state.checkedInParty.size()).toEqual(2n);
         expect(state.checkedInParty.member(partier2)).toBeTruthy();
     });
+    it('Deploys a contract (the easy way)', async () => {
+        const PARTY_SIZE = BigInt(5);
+        const aliceAddress = sampleUserAddress();
+        const alicePrivateState = createPartyPrivateState(aliceAddress, randomBytes(32));
+
+        logger.info(`Deploying a contract the easy way...`);
+        const deployed: any = await (deployContract as any)(aliceProviders, {
+            compiledContract: CompiledPartyContract,
+            privateStateId: ALICE_PRIVATE_ID,
+            initialPrivateState: alicePrivateState,
+            args: [PARTY_SIZE]
+        });
+
+        const contract2Address = deployed.deployTxData.public.contractAddress;
+        logger.info(`Contract2 deployed at ${contract2Address}`);
+        expect(contract2Address).toBeDefined();
+        expect(contract2Address.length).toBeGreaterThan(0);
+    });
 });
