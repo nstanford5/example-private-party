@@ -1,11 +1,22 @@
+// This file is part of example-battleship.
+// Copyright (C) Midnight Foundation
+// SPDX-License-Identifier: Apache-2.0
+// Licensed under the Apache License, Version 2.0 (the "License");
+// You may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomBytes } from 'node:crypto';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import {
-    createUnprovenDeployTx,
-    deployContract,
-    submitCallTx,
-} from '@midnight-ntwrk/midnight-js-contracts';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
+import { createUnprovenDeployTx, deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js/contracts';
 import type { ContractAddress } from '@midnight-ntwrk/compact-runtime';
 import { sampleUserAddress } from '@midnight-ntwrk/compact-runtime';
 import pino from 'pino';
@@ -27,7 +38,7 @@ const logger = pino({
     transport: { target: 'pino-pretty' },
 });
 
-describe('Raffle Smart Contract via midnight-js', () => {
+describe('Private Party smart contract via midnight-js', () => {
     let aliceWallet: MidnightWalletProvider;
     let bobWallet: MidnightWalletProvider;
     let claireWallet: MidnightWalletProvider;
@@ -46,7 +57,6 @@ describe('Raffle Smart Contract via midnight-js', () => {
     const BOB_PRIVATE_ID = 'BobPartyPrivateState';
     const CLAIRE_PRIVATE_ID = 'ClairePartyPrivateState';
 
-    // @TODO -- can I change this to UserAddress?
     const partier1 = randomBytes(32);
     const partier2 = randomBytes(32);
     const partier3 = randomBytes(32);
@@ -102,49 +112,26 @@ describe('Raffle Smart Contract via midnight-js', () => {
             await aliceWallet.stop();
         }
     });
-    it('Deploys the contract(the hard way)', async () => {
+    it('Deploys a contract (the easy way)', async () => {
         const PARTY_SIZE = BigInt(10);
         const aliceAddress = sampleUserAddress();
         const alicePrivateState = createPartyPrivateState(aliceAddress, randomBytes(32));
-    
-        // Step 1: Local circuit execution
-        const unprovenData: any = await (createUnprovenDeployTx as any)(aliceProviders, {
+
+        logger.info(`Deploying a contract the easy way...`);
+        const deployed: any = await (deployContract as any)(aliceProviders, {
             compiledContract: CompiledPartyContract,
             privateStateId: ALICE_PRIVATE_ID,
             initialPrivateState: alicePrivateState,
             args: [PARTY_SIZE]
         });
-        
-        const pendingAddress = unprovenData.public?.contractAddress;
-        logger.info(`Unproven tx created. Pending contract address: ${pendingAddress}`);
 
-        // Step 2: Prove (send to proof server, get ZK proof back)
-        const provenTx = await aliceProviders.proofProvider.proveTx(unprovenData.private.unprovenTx);
-        logger.info('proven tx received from proof server');
-
-        // Step 3: Balance wallet
-        const balancedTx = await aliceProviders.walletProvider.balanceTx(provenTx);
-        logger.info('Balanced tx ready for submission');
-
-        // Step 4: Submit (send to network node)
-        const txId = await aliceProviders.midnightProvider.submitTx(balancedTx);
-        logger.info(`Submitted tx id: ${txId}`);
-
-        // Step 5: Watch for finalized txn
-        const finalizedTxData = await aliceProviders.publicDataProvider.watchForTxData(txId);
-        logger.info(`Finalized! Status: ${finalizedTxData.status}, block: ${finalizedTxData.blockHeight}`);
-    
-        // Store private state (normally done inside deployContract)
-        aliceProviders.privateStateProvider.setContractAddress(pendingAddress);
-        await aliceProviders.privateStateProvider.set(ALICE_PRIVATE_ID, alicePrivateState);
-
-        contractAddress = pendingAddress;
-        logger.info(`Contract address: ${contractAddress}`);
+        contractAddress = deployed.deployTxData.public.contractAddress;
+        logger.info(`Contract deployed at ${contractAddress}`);
         expect(contractAddress).toBeDefined();
         expect(contractAddress.length).toBeGreaterThan(0);
 
         // verify initial ledger state (constructor execution)
-        let state = await queryLedger(aliceProviders);
+        const state = await queryLedger(aliceProviders);
         expect(state.maxListSize).toEqual(PARTY_SIZE);
         expect(state.partyState).toEqual(PartyState.NOT_READY);
         logger.info(`Initial State: maxListSize: ${state.maxListSize}, partyState: ${state.partyState}`);
@@ -162,12 +149,12 @@ describe('Raffle Smart Contract via midnight-js', () => {
             contractAddress,
             privateStateId: ALICE_PRIVATE_ID,
             circuitId: 'addOrganizer',
-            args: [bobPrivateState.sk]
+            args: [bobPrivateState.sk]// pass in bobs secret to add Bob as an organizer
         });
         logger.info(`New organizer added!`);
 
 
-        let state = await queryLedger(aliceProviders);
+        const state = await queryLedger(aliceProviders);
         expect(state.organizers.size()).toEqual(2n);
         expect(state.partyState).toEqual(PartyState.NOT_READY);
     });
@@ -185,10 +172,10 @@ describe('Raffle Smart Contract via midnight-js', () => {
             circuitId: 'addParticipant',
             args: [partier1],
         });
-        logger.info(`Bob has added a participant!`);
+        logger.info(`Alice has added a participant!`);
 
 
-        let state = await queryLedger(aliceProviders);
+        const state = await queryLedger(aliceProviders);
         expect(state.hashedPartyGoers.size()).toEqual(1n);
     });// end of 'Adds a participant (Alice)'
     it('Adds a participant (Bob)', async () => {
@@ -203,7 +190,7 @@ describe('Raffle Smart Contract via midnight-js', () => {
         });
         logger.info(`Bob has added a participant!`);
 
-        let state = await queryLedger(bobProviders);
+        const state = await queryLedger(bobProviders);
         expect(state.hashedPartyGoers.size()).toEqual(2n);
     });
     it('Blocks non-organizers from adding participants', async () => {
@@ -265,7 +252,7 @@ describe('Raffle Smart Contract via midnight-js', () => {
         logger.info(`Party started!`);
 
 
-        let state = await queryLedger(aliceProviders);
+        const state = await queryLedger(aliceProviders);
         expect(state.partyState).toEqual(PartyState.READY);
         expect(state.checkedInParty.size()).toEqual(0n);
     });
@@ -282,7 +269,7 @@ describe('Raffle Smart Contract via midnight-js', () => {
         logger.info(`Alice has checked in a participant!`);
 
 
-        let state = await queryLedger(aliceProviders);
+        const state = await queryLedger(aliceProviders);
         expect(state.partyState).toEqual(PartyState.READY);
         expect(state.checkedInParty.size()).toEqual(1n);
         expect(state.checkedInParty.member(partier1)).toBeTruthy();
@@ -299,26 +286,49 @@ describe('Raffle Smart Contract via midnight-js', () => {
         });
         logger.info(`Bob has checked in a participant!`);
 
-        let state = await queryLedger(bobProviders);
+        const state = await queryLedger(bobProviders);
         expect(state.partyState).toEqual(PartyState.READY);
         expect(state.checkedInParty.size()).toEqual(2n);
         expect(state.checkedInParty.member(partier2)).toBeTruthy();
     });
-    it('Deploys a contract (the easy way)', async () => {
+    it('Deploys the contract(the hard way)', async () => {
         const PARTY_SIZE = BigInt(5);
         const aliceAddress = sampleUserAddress();
         const alicePrivateState = createPartyPrivateState(aliceAddress, randomBytes(32));
-
-        logger.info(`Deploying a contract the easy way...`);
-        const deployed: any = await (deployContract as any)(aliceProviders, {
+    
+        // Step 1: Local circuit execution
+        const unprovenData: any = await (createUnprovenDeployTx as any)(aliceProviders, {
             compiledContract: CompiledPartyContract,
             privateStateId: ALICE_PRIVATE_ID,
             initialPrivateState: alicePrivateState,
             args: [PARTY_SIZE]
         });
+        
+        const pendingAddress = unprovenData.public?.contractAddress;
+        logger.info(`Unproven tx created. Pending contract address: ${pendingAddress}`);
 
-        const contract2Address = deployed.deployTxData.public.contractAddress;
-        logger.info(`Contract2 deployed at ${contract2Address}`);
+        // Step 2: Prove (send to proof server, get ZK proof back)
+        const provenTx = await aliceProviders.proofProvider.proveTx(unprovenData.private.unprovenTx);
+        logger.info('proven tx received from proof server');
+
+        // Step 3: Balance wallet
+        const balancedTx = await aliceProviders.walletProvider.balanceTx(provenTx);
+        logger.info('Balanced tx ready for submission');
+
+        // Step 4: Submit (send to network node)
+        const txId = await aliceProviders.midnightProvider.submitTx(balancedTx);
+        logger.info(`Submitted tx id: ${txId}`);
+
+        // Step 5: Watch for finalized txn
+        const finalizedTxData = await aliceProviders.publicDataProvider.watchForTxData(txId);
+        logger.info(`Finalized! Status: ${finalizedTxData.status}, block: ${finalizedTxData.blockHeight}`);
+    
+        // Store private state (normally done inside deployContract)
+        aliceProviders.privateStateProvider.setContractAddress(pendingAddress);
+        await aliceProviders.privateStateProvider.set(ALICE_PRIVATE_ID, alicePrivateState);
+
+        const contract2Address = pendingAddress;
+        logger.info(`Contract2 address: ${contract2Address}`);
         expect(contract2Address).toBeDefined();
         expect(contract2Address.length).toBeGreaterThan(0);
     });
