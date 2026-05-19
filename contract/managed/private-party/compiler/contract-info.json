@@ -4,15 +4,24 @@
   "runtime-version": "0.16.0",
   "circuits": [
     {
-      "name": "addOrganizer",
+      "name": "rsvp",
       "pure": false,
       "proof": true,
       "arguments": [
         {
-          "name": "_organizerSk",
+          "name": "_address",
           "type": {
-            "type-name": "Bytes",
-            "length": 32
+            "type-name": "Struct",
+            "name": "UserAddress",
+            "elements": [
+              {
+                "name": "bytes",
+                "type": {
+                  "type-name": "Bytes",
+                  "length": 32
+                }
+              }
+            ]
           }
         }
       ],
@@ -23,17 +32,22 @@
       }
     },
     {
-      "name": "addParticipant",
+      "name": "startParty",
       "pure": false,
       "proof": true,
       "arguments": [
-        {
-          "name": "_participantPk",
-          "type": {
-            "type-name": "Bytes",
-            "length": 32
-          }
-        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "closeEntry",
+      "pure": false,
+      "proof": true,
+      "arguments": [
       ],
       "result-type": {
         "type-name": "Tuple",
@@ -47,10 +61,19 @@
       "proof": true,
       "arguments": [
         {
-          "name": "participantPk",
+          "name": "address",
           "type": {
-            "type-name": "Bytes",
-            "length": 32
+            "type-name": "Struct",
+            "name": "UserAddress",
+            "elements": [
+              {
+                "name": "bytes",
+                "type": {
+                  "type-name": "Bytes",
+                  "length": 32
+                }
+              }
+            ]
           }
         }
       ],
@@ -61,10 +84,26 @@
       }
     },
     {
-      "name": "chainStartParty",
+      "name": "claimFees",
       "pure": false,
       "proof": true,
       "arguments": [
+        {
+          "name": "address",
+          "type": {
+            "type-name": "Struct",
+            "name": "UserAddress",
+            "elements": [
+              {
+                "name": "bytes",
+                "type": {
+                  "type-name": "Bytes",
+                  "length": 32
+                }
+              }
+            ]
+          }
+        }
       ],
       "result-type": {
         "type-name": "Tuple",
@@ -75,20 +114,7 @@
   ],
   "witnesses": [
     {
-      "name": "localStartParty",
-      "arguments": [
-      ],
-      "result type": {
-        "type-name": "Enum",
-        "name": "PartyState",
-        "elements": [
-          "NOT_READY",
-          "READY"
-        ]
-      }
-    },
-    {
-      "name": "localSk",
+      "name": "localSecret",
       "arguments": [
       ],
       "result type": {
@@ -101,33 +127,33 @@
   ],
   "ledger": [
     {
-      "name": "organizers",
+      "name": "organizer",
       "index": 0,
       "exported": true,
-      "storage": "Set",
+      "storage": "Cell",
       "type": {
         "type-name": "Bytes",
         "length": 32
       }
     },
     {
-      "name": "hashedPartyGoers",
+      "name": "maxListSize",
       "index": 1,
       "exported": true,
-      "storage": "Set",
+      "storage": "Cell",
       "type": {
-        "type-name": "Bytes",
-        "length": 32
+        "type-name": "Uint",
+        "maxval": 65535
       }
     },
     {
-      "name": "checkedInParty",
+      "name": "entryFee",
       "index": 2,
       "exported": true,
-      "storage": "Set",
+      "storage": "Cell",
       "type": {
-        "type-name": "Bytes",
-        "length": 32
+        "type-name": "Uint",
+        "maxval": 65535
       }
     },
     {
@@ -139,19 +165,40 @@
         "type-name": "Enum",
         "name": "PartyState",
         "elements": [
-          "NOT_READY",
-          "READY"
+          "NOT_STARTED",
+          "READY",
+          "STARTED",
+          "DOORS_CLOSED"
         ]
       }
     },
     {
-      "name": "maxListSize",
+      "name": "hashedPartyGoers",
       "index": 4,
       "exported": true,
-      "storage": "Cell",
+      "storage": "Set",
       "type": {
-        "type-name": "Uint",
-        "maxval": 255
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "checkedInParty",
+      "index": 5,
+      "exported": true,
+      "storage": "Set",
+      "type": {
+        "type-name": "Struct",
+        "name": "UserAddress",
+        "elements": [
+          {
+            "name": "bytes",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          }
+        ]
       }
     }
   ]

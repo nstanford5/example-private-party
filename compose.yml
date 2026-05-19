@@ -36,7 +36,7 @@ services:
         condition: service_healthy
 
   node:
-    image: 'midnightntwrk/midnight-node:0.22.3'
+    image: 'midnightntwrk/midnight-node:0.22.5'
     ports:
       - '127.0.0.1:9944:9944'
     healthcheck:
