@@ -17,30 +17,20 @@ import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import { PartyState, type Ledger } from './managed/private-party/contract/index.js';
 
 export type PartyPrivateState = {
-    address: string,
-    sk: Uint8Array,
+    secret: Uint8Array,
 }
 
-export const createPartyPrivateState = (address: string, sk: Uint8Array) => ({
-    address,
-    sk
+export const createPartyPrivateState = (secret: Uint8Array) => ({
+    secret
 });
 
 export const witnesses = {
-    localStartParty: ({
-        privateState
-    }: WitnessContext<Ledger, PartyPrivateState>): [
-        PartyPrivateState,
-        number
-    ] => {
-        return [privateState, PartyState.READY];
-    },
-    localSk: ({
+    localSecret: ({
         privateState
     }: WitnessContext<Ledger, PartyPrivateState>): [
         PartyPrivateState,
         Uint8Array,
     ] => {
-        return [privateState, privateState.sk]
+        return [privateState, privateState.secret]
     }
 };

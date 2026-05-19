@@ -6,7 +6,7 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { type MidnightWalletProvider } from './wallet.js';
 import { type NetworkConfig } from './config.js';
 
-export type PartyCircuits = 'addOrganizer' | 'addParticipant' | 'checkIn' | 'chainStartParty';
+export type PartyCircuits = 'rsvp' | 'startParty' | 'closeEntry' | 'checkIn' | 'claimFees';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type PartyProviders = MidnightProviders<any>;
 

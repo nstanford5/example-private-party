@@ -16,9 +16,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomBytes } from 'node:crypto';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
-import { createUnprovenDeployTx, deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js/contracts';
+import { createUnprovenDeployTx, deployContract, submitCallTx, type DeployedContract } from '@midnight-ntwrk/midnight-js/contracts';
 import type { ContractAddress } from '@midnight-ntwrk/compact-runtime';
-import { sampleUserAddress } from '@midnight-ntwrk/compact-runtime';
+import { encodeUserAddress, sampleUserAddress } from '@midnight-ntwrk/compact-runtime';
 import pino from 'pino';
 
 import { getConfig } from '../config.js';
@@ -26,12 +26,15 @@ import { MidnightWalletProvider, syncWallet } from '../wallet.js';
 import { buildProviders, type PartyProviders } from '../providers.js';
 import {
     CompiledPartyContract,
+    Contract,
     ledger,
     PartyState,
     zkConfigPath
 } from '../../contract/index.js';
 import { createPartyPrivateState } from '../../contract/witnesses.js'
 import type { EnvironmentConfiguration } from '@midnight-ntwrk/testkit-js';
+import type { FinalizedCallTxData } from '@midnight-ntwrk/midnight-js/contracts';
+import type { UnshieldedAddress } from '@midnight-ntwrk/wallet-sdk-address-format';
 
 const logger = pino({
     level: process.env['LOG_LEVEL'] ?? 'info',
@@ -57,9 +60,7 @@ describe('Private Party smart contract via midnight-js', () => {
     const BOB_PRIVATE_ID = 'BobPartyPrivateState';
     const CLAIRE_PRIVATE_ID = 'ClairePartyPrivateState';
 
-    const partier1 = randomBytes(32);
-    const partier2 = randomBytes(32);
-    const partier3 = randomBytes(32);
+
 
     async function queryLedger(providers: PartyProviders) {
         const state = 
@@ -108,21 +109,30 @@ describe('Private Party smart contract via midnight-js', () => {
 
     afterAll(async () => {
         if(aliceWallet) {
-            logger.info('Stopping wallet...');
+            logger.info('Stopping Alice wallet...');
             await aliceWallet.stop();
+        }
+        if(bobWallet) {
+            logger.info('Stopping Bob wallet...');
+            await bobWallet.stop();
+        }
+        if(claireWallet) {
+            logger.info('Stopping Claire wallet...');
+            await claireWallet.stop();
         }
     });
     it('Deploys a contract (the easy way)', async () => {
         const PARTY_SIZE = BigInt(10);
-        const aliceAddress = sampleUserAddress();
-        const alicePrivateState = createPartyPrivateState(aliceAddress, randomBytes(32));
+        const FEE = BigInt(5);
+        const alicePrivateState = createPartyPrivateState(randomBytes(32));
 
         logger.info(`Deploying a contract the easy way...`);
-        const deployed: any = await (deployContract as any)(aliceProviders, {
-            compiledContract: CompiledPartyContract,
-            privateStateId: ALICE_PRIVATE_ID,
-            initialPrivateState: alicePrivateState,
-            args: [PARTY_SIZE]
+        const deployed: DeployedContract<Contract> = 
+            await (deployContract<Contract>)(aliceProviders, {
+                compiledContract: CompiledPartyContract,
+                privateStateId: ALICE_PRIVATE_ID,
+                initialPrivateState: alicePrivateState,
+                args: [PARTY_SIZE, FEE]
         });
 
         contractAddress = deployed.deployTxData.public.contractAddress;
@@ -133,175 +143,146 @@ describe('Private Party smart contract via midnight-js', () => {
         // verify initial ledger state (constructor execution)
         const state = await queryLedger(aliceProviders);
         expect(state.maxListSize).toEqual(PARTY_SIZE);
-        expect(state.partyState).toEqual(PartyState.NOT_READY);
-        logger.info(`Initial State: maxListSize: ${state.maxListSize}, partyState: ${state.partyState}`);
+        expect(state.partyState).toEqual(PartyState.NOT_STARTED);
+        expect(state.entryFee).toEqual(FEE);
+        expect(state.hashedPartyGoers.size()).toEqual(0n);
     });
-    it('Adds an organizer', async () => {
-        // bob stuff
-        const bobPrivateState = createPartyPrivateState(sampleUserAddress(), randomBytes(32));
-        bobProviders.privateStateProvider.setContractAddress(contractAddress)
-        await bobProviders.privateStateProvider.set(BOB_PRIVATE_ID, bobPrivateState);
+    it('Allows Bob to rsvp (privately)', async () => {
 
-        // need to have type signatures correct in the args because the errors are bad
-        logger.info(`Adding an organizer...`);
-        const txData1: any = await (submitCallTx as any)(aliceProviders, {
-            compiledContract: CompiledPartyContract,
-            contractAddress,
-            privateStateId: ALICE_PRIVATE_ID,
-            circuitId: 'addOrganizer',
-            args: [bobPrivateState.sk]// pass in bobs secret to add Bob as an organizer
-        });
-        logger.info(`New organizer added!`);
+        const bobInitialPrivateState = createPartyPrivateState(randomBytes(32));
+        bobProviders.privateStateProvider.setContractAddress(contractAddress);
+        await bobProviders.privateStateProvider.set(BOB_PRIVATE_ID, bobInitialPrivateState);
+        const bobPrivateState = await bobProviders.privateStateProvider.get(BOB_PRIVATE_ID);
 
+        const bobUnshielded = await bobWallet.wallet.unshielded.getAddress();
+        const bobAddress = { bytes: new Uint8Array(bobUnshielded.data) };
 
-        const state = await queryLedger(aliceProviders);
-        expect(state.organizers.size()).toEqual(2n);
-        expect(state.partyState).toEqual(PartyState.NOT_READY);
-    });
-    it('Adds a participant (Alice)', async () => {
-
-        // @TODO -- this is how you get the private state value
-        // @TODO -- this is not being used here
-        const alicePrivateState = await aliceProviders.privateStateProvider.get(ALICE_PRIVATE_ID);
-        // alicePrivateState.sk
-        logger.info(`Alice is adding a participant...`);
-        const txData2: any = await (submitCallTx as any)(aliceProviders, {
-            compiledContract: CompiledPartyContract,
-            contractAddress,
-            privateStateId: ALICE_PRIVATE_ID,// does this matter?
-            circuitId: 'addParticipant',
-            args: [partier1],
-        });
-        logger.info(`Alice has added a participant!`);
+        logger.info(`Bob is sending an RSVP...`);
+        const txData: FinalizedCallTxData<Contract, 'rsvp'> = 
+            await (submitCallTx<Contract, 'rsvp'>)(bobProviders, {
+                compiledContract: CompiledPartyContract,
+                contractAddress,
+                privateStateId: BOB_PRIVATE_ID,
+                circuitId: 'rsvp',
+                args: [bobAddress]
+            });
+        logger.info(`Bob rsvp'd successfully!`);
 
 
+        // state verification checks here
         const state = await queryLedger(aliceProviders);
         expect(state.hashedPartyGoers.size()).toEqual(1n);
-    });// end of 'Adds a participant (Alice)'
-    it('Adds a participant (Bob)', async () => {
+        expect(state.partyState).toEqual(PartyState.NOT_STARTED);
+    });
+    it('Blocks organizers from rsvp', async () => {
 
-        logger.info(`Bob is adding a participant...`);
-        const txData2: any = await (submitCallTx as any)(bobProviders, {
-            compiledContract: CompiledPartyContract,
-            contractAddress,
-            privateStateId: BOB_PRIVATE_ID,// does this matter?
-            circuitId: 'addParticipant',
-            args: [partier2],
+        const aliceUnshielded: UnshieldedAddress = await aliceWallet.wallet.unshielded.getAddress();
+        const aliceAddress: Uint8Array = encodeUserAddress(aliceUnshielded.hexString);
+
+        logger.info(`Alice tries to rsvp...`);
+        await expect(async () => {
+            await (submitCallTx<Contract, 'rsvp'>)(bobProviders, {
+                compiledContract: CompiledPartyContract,
+                contractAddress,
+                privateStateId: ALICE_PRIVATE_ID,
+                circuitId: 'rsvp',
+                args: [{ bytes: aliceAddress }]
+            });
+        }).rejects.toThrow();
+        logger.info(`Alice was rejected!`);
+    });
+    it('Allows Claire to rsvp(privately)', async () => {
+
+        const claireInitialPrivateState = createPartyPrivateState(randomBytes(32));
+        claireProviders.privateStateProvider.setContractAddress(contractAddress);
+        await claireProviders.privateStateProvider.set(CLAIRE_PRIVATE_ID, claireInitialPrivateState);
+        const clairePrivateState = await claireProviders.privateStateProvider.get(CLAIRE_PRIVATE_ID);
+
+        const claireUnshielded: UnshieldedAddress = await claireWallet.wallet.unshielded.getAddress();
+        const claireAddress: Uint8Array = encodeUserAddress(claireUnshielded.hexString);
+
+        logger.info(`Claire is attempting to rsvp...`);
+        const txData: FinalizedCallTxData<Contract, 'rsvp'> = 
+            await (submitCallTx<Contract, 'rsvp'>)(claireProviders, {
+                compiledContract: CompiledPartyContract,
+                contractAddress,
+                privateStateId: CLAIRE_PRIVATE_ID,
+                circuitId: 'rsvp',
+                args: [{ bytes: claireAddress }]
         });
-        logger.info(`Bob has added a participant!`);
+        logger.info(`Claire successfully rsvp'd!`);
 
-        const state = await queryLedger(bobProviders);
+        const state = await queryLedger(claireProviders);
         expect(state.hashedPartyGoers.size()).toEqual(2n);
-    });
-    it('Blocks non-organizers from adding participants', async () => {
-        
-        logger.info(`Claire (malicious) is trying to add a participant`);
-        await expect(async () => {
-            await (submitCallTx as any)(claireProviders, {
-                compiledContract: CompiledPartyContract,
-                contractAddress,
-                privateStateId: CLAIRE_PRIVATE_ID,
-                circuitId: 'addParticipant',
-                args: [partier3]
-            })
-        }).rejects.toThrow();
-        logger.info(`Claire was rejected from adding a participant!`);
-
-    });
-    it('Blocks non-organizers from adding organizers', async () => {
-        
-        logger.info(`Claire (malicious) is trying to add an organizer...`);
-        await expect(async () => {
-            await (submitCallTx as any)(claireProviders, {
-                compiledContract: CompiledPartyContract,
-                contractAddress,
-                privateStateId: CLAIRE_PRIVATE_ID,
-                circuitId: 'addOrganizer',
-                args: [randomBytes(32)]
-            })
-        }).rejects.toThrow();
-        logger.info(`Claire was rejected from adding an organizer!`);
-
+        expect(state.partyState).toEqual(PartyState.NOT_STARTED);
     });
     it('Blocks non-organizers from starting the party', async () => {
 
-        logger.info(`Claire (malicious) is trying to start the party...`);
+        
+        logger.info(`Bob tries to start the party...`);
         await expect(async () => {
-            await (submitCallTx as any)(claireProviders, {
-            compiledContract: CompiledPartyContract,
-            contractAddress,
-            privateStateId: CLAIRE_PRIVATE_ID,
-            circuitId: 'chainStartParty',
-            args: [],
-        });
+            await (submitCallTx<Contract, 'startParty'>)(bobProviders, {
+                compiledContract: CompiledPartyContract,
+                contractAddress,
+                privateStateId: ALICE_PRIVATE_ID,
+                circuitId: 'startParty',
+            });
         }).rejects.toThrow();
-        logger.info(`Claire was rejected from starting the party!`);
+        logger.info(`Bob was rejected!`);
 
-
+        const state = await queryLedger(bobProviders);
+        expect(state.partyState).toEqual(PartyState.NOT_STARTED);
     });
     it('starts the party', async () => {
 
-        logger.info(`Starting the party...`);
-        const txData4: any = await (submitCallTx as any)(aliceProviders, {
-            compiledContract: CompiledPartyContract,
-            contractAddress,
-            privateStateId: ALICE_PRIVATE_ID,
-            circuitId: 'chainStartParty',
-            args: [],
+        logger.info(`Alice starts the party...`);
+        const txData: FinalizedCallTxData<Contract, 'startParty'> =
+            await (submitCallTx<Contract, 'startParty'>)(aliceProviders, {
+                compiledContract: CompiledPartyContract,
+                contractAddress,
+                privateStateId: ALICE_PRIVATE_ID,
+                circuitId: 'startParty'
         });
-        logger.info(`Party started!`);
-
+        logger.info(`Alice started the party successfully!`);
 
         const state = await queryLedger(aliceProviders);
-        expect(state.partyState).toEqual(PartyState.READY);
-        expect(state.checkedInParty.size()).toEqual(0n);
+        expect(state.partyState).toEqual(PartyState.STARTED);
     });
-    it('checks in party goers (Alice)', async () => {
+    it('Allows Bob to check in', async () => {
+
+        const bobUnshielded = await bobWallet.wallet.unshielded.getAddress();
+        const bobAddress = { bytes: new Uint8Array(bobUnshielded.data) };
         
-        logger.info(`Alice is checking in a participant...`);
-        const txData5: any = await (submitCallTx as any)(aliceProviders, {
-            compiledContract: CompiledPartyContract,
-            contractAddress,
-            privateStateId: ALICE_PRIVATE_ID,
-            circuitId: 'checkIn',
-            args: [partier1]
+        logger.info(`Bob is checking in...`);
+        const txData: FinalizedCallTxData<Contract, 'checkIn'> = 
+            await (submitCallTx<Contract, 'checkIn'>)(bobProviders, {
+                compiledContract: CompiledPartyContract,
+                contractAddress,
+                privateStateId: BOB_PRIVATE_ID,
+                circuitId: 'checkIn',
+                args: [bobAddress]
         });
-        logger.info(`Alice has checked in a participant!`);
-
-
-        const state = await queryLedger(aliceProviders);
-        expect(state.partyState).toEqual(PartyState.READY);
-        expect(state.checkedInParty.size()).toEqual(1n);
-        expect(state.checkedInParty.member(partier1)).toBeTruthy();
-    });
-    it('checks in party goers (Bob)', async () => {
-                
-        logger.info(`Bob is checking in a participant...`);
-        const txData5: any = await (submitCallTx as any)(bobProviders, {
-            compiledContract: CompiledPartyContract,
-            contractAddress,
-            privateStateId: BOB_PRIVATE_ID,
-            circuitId: 'checkIn',
-            args: [partier2]
-        });
-        logger.info(`Bob has checked in a participant!`);
+        logger.info(`Bob has successfully checked in and is now public!`);
 
         const state = await queryLedger(bobProviders);
         expect(state.partyState).toEqual(PartyState.READY);
-        expect(state.checkedInParty.size()).toEqual(2n);
-        expect(state.checkedInParty.member(partier2)).toBeTruthy();
+        expect(state.checkedInParty.size()).toEqual(1n);
+        expect(state.checkedInParty.member(bobAddress)).toBeTruthy();
+    });
+    it('blocks non-organizers from checking in party goers', async () => {
+
     });
     it('Deploys the contract(the hard way)', async () => {
         const PARTY_SIZE = BigInt(5);
-        const aliceAddress = sampleUserAddress();
-        const alicePrivateState = createPartyPrivateState(aliceAddress, randomBytes(32));
+        const FEE = BigInt(10);
+        const alicePrivateState = createPartyPrivateState(randomBytes(32));
     
         // Step 1: Local circuit execution
         const unprovenData: any = await (createUnprovenDeployTx as any)(aliceProviders, {
             compiledContract: CompiledPartyContract,
             privateStateId: ALICE_PRIVATE_ID,
             initialPrivateState: alicePrivateState,
-            args: [PARTY_SIZE]
+            args: [PARTY_SIZE, FEE]
         });
         
         const pendingAddress = unprovenData.public?.contractAddress;
