@@ -3,7 +3,8 @@ import type * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
 export enum PartyState { NOT_STARTED = 0,
                          READY = 1,
                          STARTED = 2,
-                         DOORS_CLOSED = 3
+                         DOORS_CLOSED = 3,
+                         FEES_CLAIMED = 4
 }
 
 export type Witnesses<PS> = {
