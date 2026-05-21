@@ -35,6 +35,7 @@ import { createPartyPrivateState } from '../../contract/witnesses.js'
 import type { EnvironmentConfiguration } from '@midnight-ntwrk/testkit-js';
 import type { FinalizedCallTxData } from '@midnight-ntwrk/midnight-js/contracts';
 import type { UnshieldedAddress } from '@midnight-ntwrk/wallet-sdk-address-format';
+import { nativeToken } from '@midnight-ntwrk/ledger-v8';
 
 const logger = pino({
     level: process.env['LOG_LEVEL'] ?? 'info',
@@ -50,7 +51,6 @@ describe('Private Party smart contract via midnight-js', () => {
     let claireProviders: PartyProviders;
     let contractAddress: ContractAddress;
 
-
     const config = getConfig();
     // Genesis seed(s) for local dev node — pre-funded with tokens, up to 3
     const seed1 ='0000000000000000000000000000000000000000000000000000000000000001';
@@ -60,13 +60,19 @@ describe('Private Party smart contract via midnight-js', () => {
     const BOB_PRIVATE_ID = 'BobPartyPrivateState';
     const CLAIRE_PRIVATE_ID = 'ClairePartyPrivateState';
 
-
-
     async function queryLedger(providers: PartyProviders) {
-        const state = 
+        const state =
             await providers.publicDataProvider.queryContractState(contractAddress);
         expect(state).not.toBeNull();
         return ledger(state!.data);
+    }
+
+    // NIGHT token type is the all-zero raw token type
+    const NIGHT_TOKEN_TYPE = '0000000000000000000000000000000000000000000000000000000000000000';
+
+    async function getNightBalance(walletProvider: MidnightWalletProvider): Promise<bigint> {
+        const facadeState = await walletProvider.wallet.waitForSyncedState();
+        return facadeState.unshielded.balances[NIGHT_TOKEN_TYPE] ?? 0n;
     }
 
     // setup before tests
@@ -133,7 +139,7 @@ describe('Private Party smart contract via midnight-js', () => {
                 privateStateId: ALICE_PRIVATE_ID,
                 initialPrivateState: alicePrivateState,
                 args: [PARTY_SIZE, FEE]
-        });
+            });
 
         contractAddress = deployed.deployTxData.public.contractAddress;
         logger.info(`Contract deployed at ${contractAddress}`);
@@ -209,7 +215,7 @@ describe('Private Party smart contract via midnight-js', () => {
                 privateStateId: CLAIRE_PRIVATE_ID,
                 circuitId: 'rsvp',
                 args: [{ bytes: claireAddress }]
-        });
+            });
         logger.info(`Claire successfully rsvp'd!`);
 
         const state = await queryLedger(claireProviders);
@@ -242,7 +248,7 @@ describe('Private Party smart contract via midnight-js', () => {
                 contractAddress,
                 privateStateId: ALICE_PRIVATE_ID,
                 circuitId: 'startParty'
-        });
+            });
         logger.info(`Alice started the party successfully!`);
 
         const state = await queryLedger(aliceProviders);
@@ -261,17 +267,71 @@ describe('Private Party smart contract via midnight-js', () => {
                 privateStateId: BOB_PRIVATE_ID,
                 circuitId: 'checkIn',
                 args: [bobAddress]
-        });
+            });
         logger.info(`Bob has successfully checked in and is now public!`);
 
         const state = await queryLedger(bobProviders);
-        expect(state.partyState).toEqual(PartyState.READY);
+        expect(state.partyState).toEqual(PartyState.STARTED);
         expect(state.checkedInParty.size()).toEqual(1n);
         expect(state.checkedInParty.member(bobAddress)).toBeTruthy();
     });
-    it('blocks non-organizers from checking in party goers', async () => {
+    it('Blocks non-organizers from closing the doors', async () => {
 
+        logger.info(`Bob is attempting to close the doors...`);
+        await expect(async () => {
+            await (submitCallTx<Contract, 'closeEntry'>)(bobProviders, {
+                compiledContract: CompiledPartyContract,
+                contractAddress,
+                privateStateId: BOB_PRIVATE_ID,
+                circuitId: 'closeEntry',
+            });
+        }).rejects.toThrow();
+        logger.info(`Bob was rejected!`);
+
+        const state = await queryLedger(bobProviders);
+        expect(state.partyState).toEqual(PartyState.STARTED);
     });
+    it('Closes the doors to the party', async () => {
+
+        logger.info(`Alice is closing the doors...`);
+        const txData: FinalizedCallTxData<Contract, 'closeEntry'> =
+            await (submitCallTx<Contract, 'closeEntry'>)(aliceProviders, {
+                compiledContract: CompiledPartyContract,
+                contractAddress,
+                privateStateId: ALICE_PRIVATE_ID,
+                circuitId: 'closeEntry'
+            });
+        logger.info(`Alice has successfully closed the doors!`);
+
+        const state = await queryLedger(aliceProviders);
+        expect(state.partyState).toEqual(PartyState.DOORS_CLOSED);
+    });
+    it('Allows Alice to claimFees', async () => {
+
+        const aliceUnshielded: UnshieldedAddress = await aliceWallet.wallet.unshielded.getAddress();
+        const aliceAddress: Uint8Array = encodeUserAddress(aliceUnshielded.hexString);
+
+        const balanceBefore = await getNightBalance(aliceWallet);
+        logger.info(`Alice NIGHT balance before claimFees: ${balanceBefore}`);
+
+        logger.info(`Alice is claiming fees...`);
+        const txData: FinalizedCallTxData<Contract, 'claimFees'> =
+            await (submitCallTx<Contract, 'claimFees'>)(aliceProviders, {
+                compiledContract: CompiledPartyContract,
+                contractAddress,
+                privateStateId: ALICE_PRIVATE_ID,
+                circuitId: 'claimFees',
+                args: [{ bytes: aliceAddress }]
+            });
+        logger.info(`Alice has successfully claimed fees!`);
+
+        const balanceAfter = await getNightBalance(aliceWallet);
+        logger.info(`Alice NIGHT balance after claimFees:  ${balanceAfter}`);
+        logger.info(`Alice NIGHT balance delta:            ${balanceAfter - balanceBefore}`);
+
+        const state = await queryLedger(aliceProviders);
+        expect(state.partyState).toEqual(PartyState.FEES_CLAIMED);
+    })
     it('Deploys the contract(the hard way)', async () => {
         const PARTY_SIZE = BigInt(5);
         const FEE = BigInt(10);

@@ -1,4 +1,4 @@
-// This file is part of example-battleship.
+// This file is part of example-private-party.
 // Copyright (C) Midnight Foundation
 // SPDX-License-Identifier: Apache-2.0
 // Licensed under the Apache License, Version 2.0 (the "License");

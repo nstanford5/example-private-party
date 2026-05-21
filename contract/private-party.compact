@@ -1,10 +1,3 @@
-// What does it need to do?
-
-// 1. Organizer sets the details
-// 2. Participants commit to the party
-// 3. Party state turns to READY (full list or manual)
-// 4. Party goers check-in
-
 pragma language_version 0.23;
 import CompactStandardLibrary;
 
@@ -13,7 +6,8 @@ export enum PartyState {
     NOT_STARTED,
     READY,
     STARTED,
-    DOORS_CLOSED
+    DOORS_CLOSED,
+    FEES_CLAIMED
 }
 
 // ledger declarations
@@ -30,6 +24,9 @@ constructor (partySize: Uint<16>, fee: Uint<16>) {
     const _secret = localSecret();
     const pubKey = getDappPublicKey(_secret);
     organizer = disclose(pubKey);
+
+    assert(partySize > 0, "The party size must be greater than zero");
+    assert(fee > 0, "Fee must be greater than zero");
 
     entryFee = disclose(fee);
     maxListSize = disclose(partySize);
@@ -52,7 +49,7 @@ export circuit rsvp(_address: UserAddress): [] {
     hashedPartyGoers.insert(commitHash);// doesn't need disclose bc persistentCommit
 
     if (hashedPartyGoers.size() == maxListSize) {
-        // @TODO -- In the future, emit an event to the organizer here
+        // @TODO -- In the future, emit an event to the organizer here (MIP-0002)
         partyState = PartyState.READY;
     }
 }
@@ -61,8 +58,8 @@ export circuit rsvp(_address: UserAddress): [] {
 export circuit startParty(): [] {
     const _secret = localSecret();
     const pubKey = getDappPublicKey(_secret);
-    assert(organizer == disclose(pubKey), "Only the organizer can start the party");
-    assert(partyState == PartyState.READY || partyState == PartyState.NOT_STARTED, "The party is not READY.");
+    assert(organizer == pubKey, "Only the organizer can start the party");
+    assert(partyState == PartyState.READY || partyState == PartyState.NOT_STARTED, "The party is not in the correct state for this operation");
 
     partyState = PartyState.STARTED;
 }
@@ -70,24 +67,31 @@ export circuit startParty(): [] {
 export circuit closeEntry(): [] {
     const _secret = localSecret();
     const pubKey = getDappPublicKey(_secret);
-    assert(organizer == disclose(pubKey), "Only organizer can close the doors.");
-    assert(partyState == PartyState.STARTED, "Party in wrong state.");
+    assert(organizer == pubKey, "Only organizer can close the doors");
+    assert(partyState == PartyState.STARTED, "Party in wrong state");
 
     partyState = PartyState.DOORS_CLOSED;
 }
 
 // called by the party goer, so the payment can be prompted to the caller
+// after the execution of this circuit, party goers are public
 export circuit checkIn(address: UserAddress): [] {
-    const _secret = localSecret();
-    const commitHash = commitAddress(_secret, address.bytes);
-    assert(hashedPartyGoers.member(commitHash), "Entry not found");
-
-    assert(partyState == PartyState.STARTED, "The party has not been started. Call the party police.");
+    // state verification checks
+    assert(partyState == PartyState.STARTED, "The party has not been started. Call the party police");
     assert(checkedInParty.size() < hashedPartyGoers.size(), "All guests have already checked in");
 
+    const _secret = localSecret();
+    const commitHash = commitAddress(_secret, address.bytes);
+
+    // caller verification checks
+    assert(hashedPartyGoers.member(commitHash), "You are not on the list");
+    assert(!checkedInParty.member(disclose(address)), "You have already checked in");
+
+
+
    
-    // take in unshielded payment
-    receiveUnshielded(default<Bytes<32>>, entryFee as Uint<128>);
+    // take in unshielded payment, party goers are now public
+    receiveUnshielded(nativeToken(), entryFee as Uint<128>);
     checkedInParty.insert(disclose(address));
 
     if(checkedInParty.size() == maxListSize) {
@@ -101,23 +105,26 @@ export circuit claimFees(address: UserAddress): [] {
     assert(organizer == pubKey, "You are not the organizer");
 
     // state verification checks
-    assert(partyState == PartyState.STARTED, "Party has not started yet");
+    assert(partyState == PartyState.DOORS_CLOSED, "The doors are not yet closed");
     assert(checkedInParty.size() > 0, "No fees to claim");
 
     const totalCollected = checkedInParty.size() * entryFee;
+    assert(unshieldedBalanceGte(nativeToken(), totalCollected), "Contract balance wrong");
 
     sendUnshielded(
         nativeToken(),
-        disclose(totalCollected),
+        disclose(totalCollected) as Uint<128>,
         right<ContractAddress, UserAddress>(disclose(address))
     );
+    partyState = PartyState.FEES_CLAIMED;
 }
 
 circuit commitAddress(_secret: Bytes<32>, _address: Bytes<32>): Bytes<32> {
-    return persistentCommit<Bytes<32>>(_secret, _address);
+    return persistentCommit<Bytes<32>>(_address, _secret);
 }
 
 // hash a publicKey specific to this DApp so that users cannot be tracked
+// the _secret should be a highly complex one
 circuit getDappPublicKey(_secret: Bytes<32>): Bytes<32> {
     return persistentHash<Vector<2, Bytes<32>>>([pad(32, "private-party:pk:"), _secret]);
 }

@@ -1,0 +1,17 @@
+{
+  "name": "witness-workspace",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.16.0",
+    "typescript": "^6.0.3"
+  }
+}

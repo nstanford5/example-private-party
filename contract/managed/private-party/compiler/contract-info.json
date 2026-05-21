@@ -1,7 +1,7 @@
 {
-  "compiler-version": "0.31.0",
-  "language-version": "0.23.0",
-  "runtime-version": "0.16.0",
+  "compiler-version": "0.30.0",
+  "language-version": "0.22.0",
+  "runtime-version": "0.15.0",
   "circuits": [
     {
       "name": "rsvp",
@@ -124,82 +124,5 @@
     }
   ],
   "contracts": [
-  ],
-  "ledger": [
-    {
-      "name": "organizer",
-      "index": 0,
-      "exported": true,
-      "storage": "Cell",
-      "type": {
-        "type-name": "Bytes",
-        "length": 32
-      }
-    },
-    {
-      "name": "maxListSize",
-      "index": 1,
-      "exported": true,
-      "storage": "Cell",
-      "type": {
-        "type-name": "Uint",
-        "maxval": 65535
-      }
-    },
-    {
-      "name": "entryFee",
-      "index": 2,
-      "exported": true,
-      "storage": "Cell",
-      "type": {
-        "type-name": "Uint",
-        "maxval": 65535
-      }
-    },
-    {
-      "name": "partyState",
-      "index": 3,
-      "exported": true,
-      "storage": "Cell",
-      "type": {
-        "type-name": "Enum",
-        "name": "PartyState",
-        "elements": [
-          "NOT_STARTED",
-          "READY",
-          "STARTED",
-          "DOORS_CLOSED"
-        ]
-      }
-    },
-    {
-      "name": "hashedPartyGoers",
-      "index": 4,
-      "exported": true,
-      "storage": "Set",
-      "type": {
-        "type-name": "Bytes",
-        "length": 32
-      }
-    },
-    {
-      "name": "checkedInParty",
-      "index": 5,
-      "exported": true,
-      "storage": "Set",
-      "type": {
-        "type-name": "Struct",
-        "name": "UserAddress",
-        "elements": [
-          {
-            "name": "bytes",
-            "type": {
-              "type-name": "Bytes",
-              "length": 32
-            }
-          }
-        ]
-      }
-    }
   ]
 }
